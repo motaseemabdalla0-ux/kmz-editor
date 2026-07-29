@@ -249,9 +249,16 @@
     min-height:0;
   }
   .map-files{max-height:200px;}
-  .map-files .lg-row{cursor:pointer;}
-  .map-files .lg-row input{width:13px; height:13px; flex-shrink:0;}
-  .map-files .lg-row.off .lg-name{opacity:.45; text-decoration:line-through;}
+  .map-files .lg-row, .map-legend .lg-row{cursor:pointer;}
+  .map-files .lg-row input, .map-legend .lg-row input{width:13px; height:13px; flex-shrink:0;}
+  .lg-row.off .lg-name{opacity:.45; text-decoration:line-through;}
+  .lg-row.off .lg-swatch{opacity:.3;}
+  .lg-pick{
+    border:1px solid var(--line); background:var(--white); color:var(--brown);
+    border-radius:3px; font-size:10px; line-height:1; padding:3px 5px;
+    cursor:pointer; flex-shrink:0; font-family:var(--sans);
+  }
+  .lg-pick:hover{border-color:var(--gold); background:var(--gold-soft);}
   .lg-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .lg-head-row{
     display:flex; align-items:center; gap:6px;
@@ -372,6 +379,8 @@
   /* logical inset so the frozen columns follow the reading direction */
   thead th:nth-child(1){position:sticky; inset-inline-start:0; z-index:4; width:36px; min-width:36px; padding:9px 6px; text-align:center;}
   thead th:nth-child(2){position:sticky; inset-inline-start:36px; z-index:3;}
+  thead th.sortable{cursor:pointer; user-select:none;}
+  thead th.sortable:hover{background:#4a4541;}
   tbody td{
     padding:7px 10px;
     border-bottom:1px solid var(--line);
@@ -611,10 +620,12 @@
     <div class="files-pop" id="filesPop">
       <div class="fp-head" data-i18n="filesHead"></div>
       <div id="filesList"></div>
+      <button class="mini-btn" id="mergeSourcesBtn" style="width:100%; margin-top:8px;" data-i18n="mergeBtn" data-i18n-title="mergeBtnTip"></button>
       <div class="fp-note" data-i18n="filesNote"></div>
     </div>
   </div>
   <div class="spacer"></div>
+  <button class="btn btn-gold" id="saveBtn" style="display:none;"></button>
   <button class="btn btn-ghost" id="langBtn" title="Switch language / تبديل اللغة">EN</button>
   <button class="btn btn-ghost" id="resetBtn" data-i18n="resetAll" disabled></button>
   <button class="btn btn-gold" id="exportBtn" data-i18n="exportKmz" disabled></button>
@@ -874,7 +885,20 @@
       filesPanelHead:'الملفات المعروضة',
       showAll:'الكل', hideAll:'إخفاء',
       fileShown:'تم إظهار {name}', fileHidden:'تم إخفاء {name}',
-      shownAllFiles:'تم إظهار كل الملفات', hiddenAllFiles:'تم إخفاء كل الملفات'
+      shownAllFiles:'تم إظهار كل الملفات', hiddenAllFiles:'تم إخفاء كل الملفات',
+      legendVisTip:'إظهار أو إخفاء قطع هذه الفئة',
+      catShown:'تم إظهار {name}', catHidden:'تم إخفاء {name} — لا يمكن تحديدها أو حذفها الآن',
+      shownAllCats:'تم إظهار كل الفئات', hiddenAllCats:'تم إخفاء كل الفئات',
+      saveWork:'💾 حفظ العمل', saved:'✓ محفوظ',
+      sessionSaved:'تم حفظ العمل — سيبقى بعد تحديث الصفحة',
+      sessionRestored:'تم استرجاع جلستك السابقة ({n} قطعة)',
+      saveFailed:'تعذّر الحفظ: {msg}',
+      mergeBtn:'دمج الملفات المعروضة في ملف واحد',
+      mergeBtnTip:'يدمج كل الملفات المؤشَّرة حالياً في ملف واحد ببياناتها كاملة. أخفِ ما لا تريد دمجه أولاً.',
+      mergeNeedsTwo:'تحتاج ملفين معروضين على الأقل للدمج',
+      mergePrompt:'اسم الملف الناتج من دمج {n} ملفات:',
+      mergedInto:'تم دمج {n} قطعة في «{name}»',
+      sortTip:'اضغط للترتيب حسب هذا العمود'
     },
     en: {
       title:'KMZ Editor — RCU',
@@ -989,7 +1013,20 @@
       filesPanelHead:'Visible files',
       showAll:'All', hideAll:'None',
       fileShown:'Showing {name}', fileHidden:'Hid {name}',
-      shownAllFiles:'All files shown', hiddenAllFiles:'All files hidden'
+      shownAllFiles:'All files shown', hiddenAllFiles:'All files hidden',
+      legendVisTip:'Show or hide this category',
+      catShown:'Showing {name}', catHidden:'Hid {name} — it cannot be selected or deleted now',
+      shownAllCats:'All categories shown', hiddenAllCats:'All categories hidden',
+      saveWork:'💾 Save work', saved:'✓ Saved',
+      sessionSaved:'Work saved — it will survive a page refresh',
+      sessionRestored:'Restored your previous session ({n} plots)',
+      saveFailed:'Could not save: {msg}',
+      mergeBtn:'Merge visible files into one',
+      mergeBtnTip:'Combines every ticked file into a single file carrying all their data. Hide the ones you do not want merged first.',
+      mergeNeedsTwo:'You need at least two visible files to merge',
+      mergePrompt:'Name for the file merged from {n} files:',
+      mergedInto:'Merged {n} plots into \"{name}\"',
+      sortTip:'Click to sort by this column'
     }
   };
 
@@ -1038,6 +1075,8 @@
   const mapFiles = document.getElementById('mapFiles');
   const offlineNote = document.getElementById('offlineNote');
   const langBtn = document.getElementById('langBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  let saveTimer = null, sessionDirty = false, lastSavedAt = null;
   const filesBtn = document.getElementById('filesBtn');
   const filesPop = document.getElementById('filesPop');
   const filesList = document.getElementById('filesList');
@@ -1080,6 +1119,8 @@
   let pendingFit = null;        // bounds waiting to be applied once the map container is actually visible
   let mapTool = null;           // armed drag tool on the map: null | 'rect' | 'lasso' | 'brush'
   let legendGroups = [];        // legend rows grouped by land-use label + colour
+  const hiddenStyles = new Set(); // style ids whose category is toggled off in the legend
+  let sortKey = null, sortDir = 1; // attribute-table sorting
   let tileErrors = 0;           // failed basemap tile loads for the active source
   // how plots are painted; filled is the default everywhere, outline is opt-in
   let fillMode = 'filled';
@@ -1321,6 +1362,7 @@ ${inner}</table>
     fileInput.value = '';                     // allow re-picking the same file later
     if(!addedFiles) return;
     refreshAfterSourceChange();
+    markSession();
     showToast(sources.length > 1
       ? t('mergedInfo', {n: addedTotal, files: addedFiles, total: placemarks.length})
       : t('loaded', {n: addedTotal}));
@@ -1373,6 +1415,8 @@ ${inner}</table>
     if(!filesPop.contains(e.target) && e.target !== filesBtn) filesPop.classList.remove('open');
   });
 
+  document.getElementById('mergeSourcesBtn').addEventListener('click', mergeVisibleSources);
+
   filesList.addEventListener('click', (e)=>{
     const btn = e.target.closest('button[data-sact]');
     if(!btn) return;
@@ -1401,6 +1445,46 @@ ${inner}</table>
     removeSource(source);
   });
 
+  // Combine every currently-visible file into one file, so the export carries a
+  // single merged layer instead of one folder per source.
+  function mergeVisibleSources(){
+    const vis = sources.filter(s=> s.visible !== false);
+    if(vis.length < 2){ showToast(t('mergeNeedsTwo')); return; }
+    const suggested = vis[0].name + '_merged';
+    const name = prompt(t('mergePrompt', {n: vis.length}), suggested);
+    if(name === null) return;
+    const finalName = (name.trim() || suggested);
+
+    const ns = xmlDoc.documentElement.namespaceURI;
+    const folder = ns ? xmlDoc.createElementNS(ns, 'Folder') : xmlDoc.createElement('Folder');
+    const fname = ns ? xmlDoc.createElementNS(ns, 'name') : xmlDoc.createElement('name');
+    fname.textContent = finalName;
+    folder.appendChild(fname);
+
+    const target = {
+      id: sources.reduce((m, s)=> Math.max(m, s.id), -1) + 1,
+      name: finalName, visible: true, folder
+    };
+    let moved = 0;
+    placemarks.forEach(p=>{
+      if(!vis.some(s=> s.id === p.sourceId)) return;
+      folder.appendChild(p.node);          // appending an existing node moves it
+      p.sourceId = target.id;
+      p.sourceName = finalName;
+      moved++;
+    });
+    docContainer(xmlDoc).appendChild(folder);
+    // drop the now-empty folders of the sources we absorbed
+    vis.forEach(s=>{ if(s.folder && s.folder.parentNode) s.folder.parentNode.removeChild(s.folder); });
+    sources = sources.filter(s=> !vis.some(v=> v.id === s.id));
+    sources.push(target);
+    if(sources.length === 1) originalFileName = finalName;
+
+    refreshAfterSourceChange();
+    markSession();
+    showToast(t('mergedInto', {n: moved, name: finalName}));
+  }
+
   function removeSource(source){
     const mine = placemarks.filter(p=>p.sourceId === source.id);
     mine.forEach(p=>{
@@ -1415,6 +1499,7 @@ ${inner}</table>
     sources = sources.filter(s=>s.id !== source.id);
     if(!placemarks.length){ clearWorkspace(); showToast(t('allRemoved')); return; }
     refreshAfterSourceChange();
+    markSession();
     showToast(t('removedSource', {name: source.name, n: mine.length}));
   }
 
@@ -1766,6 +1851,7 @@ ${inner}</table>
       renderFilesPanel();
       buildMapLegend();
       renderTable();
+      markSession();
       showToast(on ? t('shownAllFiles') : t('hiddenAllFiles'));
       return;
     }
@@ -1780,6 +1866,7 @@ ${inner}</table>
     renderFilesPanel();
     buildMapLegend();
     renderTable();
+    markSession();
     showToast(on ? t('fileShown', {name: source.name}) : t('fileHidden', {name: source.name}));
   });
 
@@ -1787,7 +1874,7 @@ ${inner}</table>
     // Merged files often repeat the same land use under different style ids —
     // group by label+colour so one category is one legend row.
     const groups = new Map();
-    activePlacemarks().forEach(pm=>{
+    inVisibleSources().forEach(pm=>{
       if(!pm.styleId) return;
       const colour = (styleColorMap[pm.styleId] || {fill:DEFAULT_FILL}).fill.hex;
       const label = legendLabelOf(pm);
@@ -1799,26 +1886,65 @@ ${inner}</table>
     });
     // keep the style ids in JS and reference groups by index — no escaping games
     legendGroups = [...groups.values()].sort((a,b)=> b.count - a.count);
-    const rows = legendGroups.map((g, i)=>
-      `<div class="lg-row" data-group="${i}" title="${escapeHtml(t('legendTip'))}">
-        <span class="lg-swatch" style="background:${g.colour}"></span>${escapeHtml(g.label)}
-        <span class="lg-count">${g.count}</span></div>`);
+    const rows = legendGroups.map((g, i)=>{
+      const on = [...g.ids].some(id=> !hiddenStyles.has(id));
+      return `<div class="lg-row${on ? '' : ' off'}" data-group="${i}">
+        <input type="checkbox" ${on ? 'checked' : ''} title="${escapeHtml(t('legendVisTip'))}">
+        <span class="lg-swatch" style="background:${g.colour}"></span>
+        <span class="lg-name" title="${escapeHtml(g.label)}">${escapeHtml(g.label)}</span>
+        <span class="lg-count">${g.count}</span>
+        <button class="lg-pick" data-pick="${i}" title="${escapeHtml(t('legendTip'))}">☑</button>
+      </div>`;
+    });
     mapLegend.innerHTML = rows.length
-      ? `<div class="lg-head">${escapeHtml(t('legendHead'))}</div>` + rows.join('')
+      ? `<div class="lg-head-row">
+          <span class="lg-name">${escapeHtml(t('legendHead'))}</span>
+          <button data-cat="all">${escapeHtml(t('showAll'))}</button>
+          <button data-cat="none">${escapeHtml(t('hideAll'))}</button>
+        </div>` + rows.join('')
       : '';
   }
 
+  function setCategoryVisible(group, on){
+    group.ids.forEach(id=>{ if(on) hiddenStyles.delete(id); else hiddenStyles.add(id); });
+    const touched = placemarks.filter(p=> group.ids.has(p.styleId));
+    // never leave hidden plots selected — they must not be deletable while out of sight
+    if(!on) touched.forEach(p=> selected.delete(p.idx));
+    touched.forEach(refreshPlacemarkVisual);
+  }
+
   mapLegend.addEventListener('click', (e)=>{
-    const row = e.target.closest('.lg-row');
+    const bulk = e.target.closest('button[data-cat]');
+    if(bulk){
+      const on = bulk.dataset.cat === 'all';
+      legendGroups.forEach(g=> setCategoryVisible(g, on));
+      buildMapLegend();
+      renderTable();
+      showToast(on ? t('shownAllCats') : t('hiddenAllCats'));
+      return;
+    }
+    // the ☑ button still selects every plot in the category
+    const pick = e.target.closest('button[data-pick]');
+    if(pick){
+      const group = legendGroups[Number(pick.dataset.pick)];
+      const targets = activePlacemarks().filter(p=> group && group.ids.has(p.styleId));
+      if(!targets.length){ showToast(t('noMatching')); return; }
+      const allSelected = targets.every(p=>selected.has(p.idx));
+      targets.forEach(p=> setSelected(p, !allSelected));
+      renderTable();
+      showToast(allSelected ? t('deselectedCategory') : t('selectedCategory', {n: targets.length}));
+      return;
+    }
+    const row = e.target.closest('.lg-row[data-group]');
     if(!row) return;
     const group = legendGroups[Number(row.dataset.group)];
     if(!group) return;
-    const targets = activePlacemarks().filter(p=> group.ids.has(p.styleId));
-    if(!targets.length) return;
-    const allSelected = targets.every(p=>selected.has(p.idx));
-    targets.forEach(p=> setSelected(p, !allSelected));
+    const box = row.querySelector('input');
+    const on = (e.target === box) ? box.checked : !([...group.ids].some(id=> !hiddenStyles.has(id)));
+    setCategoryVisible(group, on);
+    buildMapLegend();
     renderTable();
-    showToast(allSelected ? t('deselectedCategory') : t('selectedCategory', {n: targets.length}));
+    showToast(on ? t('catShown', {name: group.label}) : t('catHidden', {name: group.label}));
   });
 
   function showQuickPopup(pm, layer){
@@ -1846,6 +1972,7 @@ ${inner}</table>
       layer.closePopup();
       refreshPlacemarkVisual(pm);
       renderTable();
+      markSession();
       showToast(pm.deleted ? t('markedDeleted', {name: pm.name}) : t('restored', {name: pm.name}));
     });
     layer.bindPopup(container).openPopup();
@@ -1856,8 +1983,8 @@ ${inner}</table>
   function refreshPlacemarkVisual(pm){
     const layer = mapLayers[pm.idx];
     if(!layer) return;
-    // plots from a hidden file leave the map entirely rather than just fading
-    if(!sourceVisible(pm)){
+    // plots from a hidden file or category leave the map entirely rather than just fading
+    if(!plotVisible(pm)){
       if(mapLayerGroup && mapLayerGroup.hasLayer(layer)) mapLayerGroup.removeLayer(layer);
       return;
     }
@@ -1979,7 +2106,9 @@ ${inner}</table>
 
   // everything in the advanced panel works on visible files only, so a hidden
   // file can never be swept into a selection (and then deleted) unseen
-  function activePlacemarks(){ return placemarks.filter(sourceVisible); }
+  function activePlacemarks(){ return placemarks.filter(plotVisible); }
+  // the legend must keep listing categories it has hidden, so it only filters by file
+  function inVisibleSources(){ return placemarks.filter(sourceVisible); }
 
   function allFieldKeys(){
     const keys = [];
@@ -2175,6 +2304,7 @@ ${inner}</table>
        !confirm(t('confirmBulkDelete', {n: changing.length}))) return;
     changing.forEach(p=>{ p.deleted = flag; refreshPlacemarkVisual(p); });
     renderTable();
+    markSession();
     showToast(flag ? t('markedN', {n: changing.length}) : t('restoredN', {n: changing.length}));
   }
 
@@ -2224,27 +2354,52 @@ ${inner}</table>
       .sort((a,b)=> keyCount[b]-keyCount[a])
       .slice(0, 6);
 
+    const arrow = k => sortKey === k ? (sortDir > 0 ? ' ▲' : ' ▼') : '';
     theadRow.innerHTML = `<th><input type="checkbox" id="selAllChk" title="${escapeHtml(t('selectAllShown'))}"></th>` +
-      `<th>${escapeHtml(t('colName'))}</th>` +
-      previewKeys.map(k=>`<th>${escapeHtml(k)}</th>`).join('') +
+      `<th class="sortable" data-sort="${NAME_KEY}" title="${escapeHtml(t('sortTip'))}">${escapeHtml(t('colName'))}${arrow(NAME_KEY)}</th>` +
+      previewKeys.map(k=>`<th class="sortable" data-sort="${escapeHtml(k)}" title="${escapeHtml(t('sortTip'))}">${escapeHtml(k)}${arrow(k)}</th>`).join('') +
       `<th>${escapeHtml(t('colActions'))}</th>`;
 
     document.getElementById('selAllChk').addEventListener('click', ()=> selectShownBtn.click());
+
+    // QGIS-style attribute sorting: click a header, click again to reverse
+    Array.from(theadRow.querySelectorAll('th.sortable')).forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const k = th.dataset.sort;
+        if(sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+        buildColumns();
+        renderTable();
+      });
+    });
   }
 
-  // a hidden source is filtered out everywhere: map, table, counts and bulk tools
+  // a hidden source or category is filtered out everywhere: map, table, counts,
+  // bulk tools and the edit panel
   function sourceVisible(pm){
     const s = sources.find(x=>x.id === pm.sourceId);
     return !s || s.visible !== false;
   }
+  function styleVisible(pm){
+    return !pm.styleId || !hiddenStyles.has(pm.styleId);
+  }
+  function plotVisible(pm){ return sourceVisible(pm) && styleVisible(pm); }
 
   function matchesSearch(pm){
-    if(!sourceVisible(pm)) return false;
+    if(!plotVisible(pm)) return false;
     if(!searchTerm) return true;
     const t = searchTerm.toLowerCase();
     if(pm.name.toLowerCase().includes(t)) return true;
     if(sources.length > 1 && (pm.sourceName || '').toLowerCase().includes(t)) return true;
     return pm.fields.some(f=> f.val.toLowerCase().includes(t) || f.key.toLowerCase().includes(t));
+  }
+
+  // numeric-aware comparison so "Area" sorts as numbers, not text
+  function compareForSort(a, b){
+    const av = fieldValueOf(a, sortKey), bv = fieldValueOf(b, sortKey);
+    const an = parseFloat(String(av).replace(/,/g, '')), bn = parseFloat(String(bv).replace(/,/g, ''));
+    const numeric = !isNaN(an) && !isNaN(bn) && /^[\s\d.,+-]+$/.test(String(av)) && /^[\s\d.,+-]+$/.test(String(bv));
+    if(numeric) return (an - bn) * sortDir;
+    return String(av).localeCompare(String(bv), undefined, {numeric:true}) * sortDir;
   }
 
   function renderTable(){
@@ -2254,7 +2409,10 @@ ${inner}</table>
     placemarks.forEach(pm=>{
       if(pm.dirty) modifiedCount++;
       if(pm.deleted) deletedCount++;
-      if(!matchesSearch(pm)) return;
+    });
+    const rows = placemarks.filter(matchesSearch);
+    if(sortKey) rows.sort(compareForSort);
+    rows.forEach(pm=>{
       shown++;
       shownOrder.push(pm.idx);
       const isSel = selected.has(pm.idx);
@@ -2320,6 +2478,7 @@ ${inner}</table>
       pm.deleted = !pm.deleted;
       renderTable();
       refreshPlacemarkVisual(pm);
+      markSession();
       showToast(pm.deleted ? t('markedDeleted', {name: pm.name}) : t('restored', {name: pm.name}));
     }
   });
@@ -2384,16 +2543,26 @@ ${inner}</table>
     if(changed) pm.dirty = true;
 
     // write straight into the live DOM node so export reflects it
-    if(pm.nameEl){ pm.nameEl.textContent = pm.name; }
-    if(pm.descEl){
+    if(!pm.nameEl){
+      // some placemarks ship without a <name>; create one rather than dropping the edit
+      const ns = xmlDoc.documentElement.namespaceURI;
+      pm.nameEl = ns ? xmlDoc.createElementNS(ns, 'name') : xmlDoc.createElement('name');
+      pm.node.insertBefore(pm.nameEl, pm.node.firstChild);
+    }
+    pm.nameEl.textContent = pm.name;
+
+    // Only rebuild the description when we actually parsed fields out of it.
+    // Descriptions that aren't in the RCU table format would otherwise be
+    // replaced by an empty table — silently destroying the original content.
+    if(pm.descEl && pm.fields.length){
       const newHtml = buildDescriptionHtml(pm.title, pm.fields);
-      // clear existing children, insert fresh CDATA
       while(pm.descEl.firstChild) pm.descEl.removeChild(pm.descEl.firstChild);
       pm.descEl.appendChild(xmlDoc.createCDATASection(newHtml));
     }
     closePanel();
     renderTable();
     refreshPlacemarkVisual(pm);
+    markSession();
     showToast(t('savedEdit', {name: pm.name}));
   });
 
@@ -2432,6 +2601,7 @@ ${inner}</table>
     if(!xmlDoc) return;
     // edits are written straight into the DOM, so the only true undo is a re-read
     clearWorkspace();
+    clearSavedSession();
     showToast(t('reloadOriginal'));
   });
 
@@ -2493,6 +2663,120 @@ ${inner}</table>
     b.classList.toggle('active', b.dataset.base === baseKey));
   syncFillButtons();
 
+  // ---------- Session persistence (IndexedDB: the merged KML can be tens of MB) ----------
+  const DB_NAME = 'kmzEditor', DB_STORE = 'session', DB_KEY = 'current';
+  function openDb(){
+    return new Promise((res, rej)=>{
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = ()=>{ req.result.createObjectStore(DB_STORE); };
+      req.onsuccess = ()=> res(req.result);
+      req.onerror = ()=> rej(req.error);
+    });
+  }
+  function dbOp(mode, fn){
+    return openDb().then(db=> new Promise((res, rej)=>{
+      const tx = db.transaction(DB_STORE, mode);
+      const out = fn(tx.objectStore(DB_STORE));
+      tx.oncomplete = ()=> res(out && out.result !== undefined ? out.result : out);
+      tx.onerror = ()=> rej(tx.error);
+    }));
+  }
+
+  async function saveSession(){
+    if(!xmlDoc) return false;
+    const nodes = Array.from(xmlDoc.getElementsByTagName('Placemark'));
+    const idxOf = new Map(nodes.map((n, i)=>[n, i]));
+    const payload = {
+      version: 1,
+      savedAt: Date.now(),
+      originalFileName,
+      kml: new XMLSerializer().serializeToString(xmlDoc),
+      sources: sources.map(s=>({id:s.id, name:s.name, visible: s.visible !== false})),
+      hiddenStyles: [...hiddenStyles],
+      // deleted/dirty flags keyed by the placemark's position in the document
+      flags: placemarks.map(p=>({d: idxOf.get(p.node), s: p.sourceId, del: !!p.deleted, dty: !!p.dirty}))
+                       .filter(f=> f.d !== undefined)
+    };
+    await dbOp('readwrite', st=> st.put(payload, DB_KEY));
+    lastSavedAt = payload.savedAt;
+    sessionDirty = false;
+    updateSaveBtn();
+    return true;
+  }
+
+  async function restoreSession(){
+    let data = null;
+    try{ data = await dbOp('readonly', st=> st.get(DB_KEY)); }catch(e){ return false; }
+    if(!data || !data.kml) return false;
+    const doc = new DOMParser().parseFromString(data.kml, 'text/xml');
+    if(doc.querySelector('parsererror')) return false;
+    xmlDoc = doc;
+    originalFileName = data.originalFileName || 'map';
+    sources = (data.sources || []).map(s=>({id:s.id, name:s.name, visible: s.visible !== false, folder:null}));
+    // re-link each source to its folder by name, so removing a file still works
+    Array.from(xmlDoc.getElementsByTagName('Folder')).forEach(f=>{
+      const n = f.getElementsByTagName('name')[0];
+      if(!n) return;
+      const s = sources.find(x=> x.name === n.textContent.trim() && !x.folder);
+      if(s) s.folder = f;
+    });
+    const flagByDoc = new Map((data.flags || []).map(f=>[f.d, f]));
+    const fallback = sources[0] || {id:0, name:'', visible:true};
+    nextIdx = 0;
+    placemarks = Array.from(xmlDoc.getElementsByTagName('Placemark')).map((node, di)=>{
+      const f = flagByDoc.get(di);
+      const src = (f && sources.find(s=>s.id === f.s)) || fallback;
+      const pm = buildPlacemark(node, src);
+      if(f){ pm.deleted = !!f.del; pm.dirty = !!f.dty; }
+      return pm;
+    }).filter(pm => pm.fields.length > 0 || pm.name);
+    hiddenStyles.clear();
+    (data.hiddenStyles || []).forEach(id=> hiddenStyles.add(id));
+    lastSavedAt = data.savedAt || null;
+    refreshAfterSourceChange();
+    sessionDirty = false;
+    updateSaveBtn();
+    return true;
+  }
+
+  function clearSavedSession(){
+    return dbOp('readwrite', st=> st.delete(DB_KEY)).catch(()=>{});
+  }
+
+  // any change worth keeping schedules a background save
+  function markSession(){
+    if(!xmlDoc) return;
+    sessionDirty = true;
+    updateSaveBtn();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{ saveSession().catch(err=> console.error('autosave', err)); }, 1500);
+  }
+
+  function updateSaveBtn(){
+    if(!xmlDoc){ saveBtn.style.display = 'none'; return; }
+    saveBtn.style.display = 'inline-block';
+    saveBtn.textContent = sessionDirty ? t('saveWork') : t('saved');
+    saveBtn.classList.toggle('btn-gold', sessionDirty);
+    saveBtn.classList.toggle('btn-ghost', !sessionDirty);
+  }
+
+  saveBtn.addEventListener('click', async ()=>{
+    clearTimeout(saveTimer);
+    try{
+      const ok = await saveSession();
+      showToast(ok ? t('sessionSaved') : t('loadFileFirst'));
+    }catch(err){
+      console.error(err);
+      showToast(t('saveFailed', {msg: err && err.message ? err.message : String(err)}));
+    }
+  });
+
+  // Bring back the last session. This must run after the declarations above —
+  // calling it earlier hits the temporal dead zone on DB_NAME and throws.
+  restoreSession()
+    .then(ok=>{ if(ok) showToast(t('sessionRestored', {n: placemarks.length})); })
+    .catch(err=> console.error('restore failed', err));
+
   // ---------- Keyboard shortcuts ----------
   document.addEventListener('keydown', (e)=>{
     const t = e.target;
@@ -2548,6 +2832,8 @@ ${inner}</table>
       placemarks = placemarks.filter(p=>!p.deleted);
       renderTable();
       renderSourceList();
+      renderFilesPanel();
+      markSession();
     }catch(err){
       console.error(err);
       showToast(t('exportError', {msg: err.message}));
