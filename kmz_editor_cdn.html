@@ -1,0 +1,2393 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>محرر KMZ — RCU</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --beige:#F8F4EF;
+    --brown:#3D3936;
+    --gold:#BA9863;
+    --gold-soft:#E8DCC6;
+    --danger:#B84A3E;
+    --danger-soft:#F3E1DE;
+    --ok:#5C6E4A;
+    --ok-soft:#E4E9DC;
+    --line:#DDD5C7;
+    --white:#FFFFFF;
+    --radius:6px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    --sans: "Segoe UI", Tahoma, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--beige);
+    color:var(--brown);
+    font-family:var(--sans);
+    font-size:14px;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  /* ---------- Top bar ---------- */
+  header{
+    background:var(--brown);
+    color:var(--beige);
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-wrap:wrap;
+    border-bottom:3px solid var(--gold);
+    flex-shrink:0;
+  }
+  header h1{
+    font-size:16px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:.3px;
+    white-space:nowrap;
+  }
+  header h1 span{color:var(--gold);}
+  .spacer{flex:1;}
+  .btn{
+    border:1px solid transparent;
+    border-radius:var(--radius);
+    padding:8px 16px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:filter .12s ease, transform .05s ease;
+    font-family:var(--sans);
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-gold{background:var(--gold); color:var(--brown);}
+  .btn-gold:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent; color:var(--beige); border-color:rgba(248,244,239,.35);}
+  .btn-ghost:hover{background:rgba(248,244,239,.1);}
+  .btn:disabled{opacity:.35; cursor:not-allowed;}
+  input[type=file]{display:none;}
+
+  .file-label{
+    background:transparent;
+    border:1px dashed rgba(248,244,239,.5);
+    color:var(--beige);
+    border-radius:var(--radius);
+    padding:8px 16px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .file-label:hover{background:rgba(248,244,239,.08);}
+
+  /* ---------- Loaded files popover ---------- */
+  .files-wrap{position:relative;}
+  .files-pop{
+    display:none;
+    position:absolute;
+    top:calc(100% + 8px);
+    inset-inline-start:0;
+    min-width:320px;
+    max-width:min(440px, 90vw);
+    background:var(--white);
+    color:var(--brown);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:0 8px 24px rgba(0,0,0,.22);
+    padding:8px;
+    z-index:1300;
+  }
+  .files-pop.open{display:block;}
+  .fp-head{font-size:11px; font-weight:700; color:#8a8378; padding:2px 4px 6px;}
+  .fp-note{font-size:10.5px; color:#8a8378; padding:6px 4px 2px; border-top:1px solid var(--line); line-height:1.6;}
+  .src-row{
+    display:flex; align-items:center; gap:6px;
+    padding:5px 4px; border-bottom:1px solid #F0EBE1;
+  }
+  .src-row:last-of-type{border-bottom:none;}
+  .src-name{flex:1; font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .src-count{font-family:var(--mono); font-size:11px; color:#8a8378; white-space:nowrap;}
+  .src-row .icon-btn{width:24px; height:24px; font-size:11px;}
+
+  /* ---------- Status / toolbar ---------- */
+  .toolbar{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 20px;
+    background:var(--white);
+    border-bottom:1px solid var(--line);
+    flex-shrink:0;
+    flex-wrap:wrap;
+  }
+  .stat{
+    font-size:12px;
+    color:#6b6560;
+    display:flex;
+    gap:6px;
+    align-items:baseline;
+  }
+  .stat b{font-size:15px; color:var(--brown); font-family:var(--mono);}
+  .search-wrap{position:relative; flex:1; min-width:220px; max-width:420px;}
+  .search-wrap input{
+    width:100%;
+    padding:8px 12px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    font-size:13px;
+    font-family:var(--sans);
+    background:var(--beige);
+    color:var(--brown);
+  }
+  .search-wrap input:focus{outline:2px solid var(--gold); outline-offset:1px;}
+  .pill{
+    font-size:11px;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:99px;
+    background:var(--ok-soft);
+    color:var(--ok);
+    white-space:nowrap;
+  }
+  .pill.warn{background:var(--gold-soft); color:#8a6d34;}
+  .pill.danger{background:var(--danger-soft); color:var(--danger);}
+  .pill.sel{background:#EFE3CC; color:#7a5f2a;}
+
+  .mini-btn{
+    border:1px solid var(--line);
+    background:var(--white);
+    color:var(--brown);
+    font-size:12px;
+    font-weight:700;
+    padding:7px 12px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    font-family:var(--sans);
+    white-space:nowrap;
+  }
+  .mini-btn:hover{border-color:var(--gold); background:var(--gold-soft);}
+  .mini-btn.active{background:var(--brown); color:var(--gold); border-color:var(--brown);}
+  .mini-btn:disabled{opacity:.4; cursor:not-allowed;}
+
+  /* ---------- Empty state ---------- */
+  .empty{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:14px;
+    color:#8a8378;
+    text-align:center;
+    padding:40px;
+  }
+  .empty svg{opacity:.4;}
+  .empty p{max-width:420px; line-height:1.7; font-size:13px; margin:0;}
+
+  /* ---------- View toggle ---------- */
+  .view-toggle{
+    display:flex;
+    gap:0;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .view-btn{
+    border:none;
+    background:var(--white);
+    color:var(--brown);
+    font-size:12px;
+    font-weight:700;
+    padding:7px 14px;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .view-btn + .view-btn{border-inline-start:1px solid var(--line);}
+  .view-btn.active{background:var(--brown); color:var(--gold);}
+
+  /* ---------- Map ---------- */
+  .map-wrap{
+    flex:1;
+    position:relative;
+  }
+  #map{
+    width:100%;
+    height:100%;
+    background:#EFEAE0;
+  }
+  .map-legend{
+    position:absolute;
+    bottom:16px;
+    right:16px;
+    z-index:400;
+    background:rgba(255,255,255,.95);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:8px 10px;
+    font-size:11px;
+    max-height:180px;
+    overflow:auto;
+    box-shadow:0 2px 10px rgba(0,0,0,.1);
+  }
+  .map-legend .lg-row{
+    display:flex; align-items:center; gap:6px; padding:3px 4px;
+    cursor:pointer; border-radius:4px; user-select:none;
+  }
+  .map-legend .lg-row:hover{background:var(--gold-soft);}
+  .map-legend .lg-swatch{width:11px; height:11px; border-radius:2px; flex-shrink:0; border:1px solid rgba(0,0,0,.2);}
+  .map-legend .lg-count{margin-inline-start:auto; font-family:var(--mono); font-size:10px; color:#8a8378;}
+  .map-legend .lg-head{font-weight:700; font-size:10px; color:#8a8378; padding:0 4px 4px; border-bottom:1px solid var(--line); margin-bottom:4px;}
+  .map-hint{
+    position:absolute;
+    bottom:16px;
+    left:12px;
+    z-index:400;
+    background:rgba(61,57,54,.85);
+    color:var(--beige);
+    font-size:11px;
+    line-height:1.7;
+    padding:6px 12px;
+    border-radius:10px;
+    max-width:min(52%, 460px);
+  }
+  body.has-batch .map-hint{bottom:calc(16px + var(--batch-h, 60px));}
+  .leaflet-crosshair, .leaflet-crosshair .leaflet-interactive{cursor:crosshair !important;}
+  .map-tools{
+    position:absolute;
+    top:12px; right:12px;
+    z-index:400;
+    display:flex; gap:3px;
+    background:rgba(255,255,255,.96);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:4px;
+    box-shadow:0 2px 10px rgba(0,0,0,.12);
+  }
+  .map-tools button{
+    border:1px solid transparent;
+    background:transparent;
+    color:var(--brown);
+    font-family:var(--sans);
+    font-size:11.5px;
+    font-weight:700;
+    padding:6px 9px;
+    border-radius:4px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .map-tools button:hover{background:var(--gold-soft);}
+  .map-tools button.active{background:var(--brown); color:var(--gold);}
+  .map-basemaps{top:56px;}
+  .map-offline{
+    display:none;
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    z-index:390;
+    background:rgba(255,255,255,.94);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:10px 16px;
+    font-size:12px;
+    max-width:min(80%, 420px);
+    text-align:center;
+    line-height:1.7;
+    color:#6b6560;
+    pointer-events:none;
+  }
+  .tiles-down .map-offline{display:block;}
+  .tiles-down #map{background:#EFEAE0;}
+  .map-basemaps button.active{background:var(--gold); color:var(--brown);}
+  .map-popup{font-family:var(--sans); min-width:170px;}
+  .map-popup .mp-title{font-weight:700; font-size:13px; margin-bottom:6px; color:var(--brown);}
+  .map-popup .mp-actions{display:flex; gap:6px;}
+  .btn-sm{padding:5px 10px !important; font-size:12px !important;}
+  .leaflet-popup-content-wrapper{border-radius:6px; border:1px solid var(--gold);}
+  .leaflet-popup-content{margin:10px 12px;}
+
+  /* ---------- Table ---------- */
+  .table-wrap{
+    flex:1;
+    overflow:auto;
+    position:relative;
+  }
+  table{
+    border-collapse:collapse;
+    width:100%;
+    font-size:12.5px;
+    font-family:var(--mono);
+  }
+  thead th{
+    position:sticky;
+    top:0;
+    background:var(--brown);
+    color:var(--gold-soft);
+    text-align:start;
+    padding:9px 10px;
+    font-weight:700;
+    font-family:var(--sans);
+    font-size:11.5px;
+    white-space:nowrap;
+    border-bottom:2px solid var(--gold);
+    z-index:2;
+  }
+  /* logical inset so the frozen columns follow the reading direction */
+  thead th:nth-child(1){position:sticky; inset-inline-start:0; z-index:4; width:36px; min-width:36px; padding:9px 6px; text-align:center;}
+  thead th:nth-child(2){position:sticky; inset-inline-start:36px; z-index:3;}
+  tbody td{
+    padding:7px 10px;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+    max-width:220px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  tbody td:nth-child(1){
+    position:sticky;
+    inset-inline-start:0;
+    z-index:2;
+    width:36px;
+    min-width:36px;
+    padding:7px 6px;
+    text-align:center;
+    overflow:visible;
+  }
+  tbody td:nth-child(2){
+    position:sticky;
+    inset-inline-start:36px;
+    font-family:var(--sans);
+    font-weight:600;
+    z-index:1;
+  }
+  input[type=checkbox]{accent-color:var(--gold); width:15px; height:15px; cursor:pointer;}
+  tbody tr:nth-child(odd) td{background:var(--white);}
+  tbody tr:nth-child(even) td{background:#FBF9F5;}
+  tbody tr:hover td{background:var(--gold-soft) !important;}
+  tbody tr.modified td{border-top:1px solid var(--gold);}
+  tbody tr.modified td:nth-child(2)::before{
+    content:"●";
+    color:var(--gold);
+    margin-inline-end:6px;
+    font-size:9px;
+  }
+  tbody tr.deleted td{
+    background:var(--danger-soft) !important;
+    color:#a08b86;
+    text-decoration:line-through;
+  }
+  tbody tr.deleted td:nth-child(2)::before{ content:""; }
+  tbody tr.selected td{background:#FCF2DC !important; text-decoration:none;}
+  tbody tr.selected.deleted td{background:#F6DED9 !important; text-decoration:line-through;}
+  [dir=rtl] tbody tr.selected td:nth-child(1){box-shadow:inset 3px 0 0 var(--gold);}
+  [dir=ltr] tbody tr.selected td:nth-child(1){box-shadow:inset -3px 0 0 var(--gold);}
+  .row-actions{display:flex; gap:6px; white-space:nowrap;}
+  .icon-btn{
+    border:1px solid var(--line);
+    background:var(--white);
+    border-radius:4px;
+    width:28px; height:28px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-family:var(--sans);
+    font-size:13px;
+    color:var(--brown);
+  }
+  .icon-btn:hover{border-color:var(--gold); background:var(--gold-soft);}
+  .icon-btn.danger:hover{border-color:var(--danger); background:var(--danger-soft); color:var(--danger);}
+
+  /* ---------- Edit panel (slide-in) ---------- */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(61,57,54,.35);
+    display:none;
+    z-index:1000;
+  }
+  .overlay.open{display:block;}
+  .panel{
+    position:fixed;
+    top:0; bottom:0; left:0;
+    width:min(420px, 92vw);
+    background:var(--white);
+    box-shadow:8px 0 24px rgba(0,0,0,.15);
+    transform:translateX(-100%);
+    transition:transform .18s ease;
+    z-index:1100;
+    display:flex;
+    flex-direction:column;
+    border-left:4px solid var(--line);
+  }
+  .panel.open{transform:translateX(0);}
+  .panel.has-changes{border-left-color:var(--gold);}
+  /* selection panel slides in from the opposite edge */
+  .panel-right{
+    left:auto; right:0;
+    transform:translateX(100%);
+    border-left:none;
+    border-right:4px solid var(--gold);
+    box-shadow:-8px 0 24px rgba(0,0,0,.15);
+    width:min(400px, 92vw);
+  }
+  .panel-right.open{transform:translateX(0);}
+
+  .seg{display:flex; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  .seg button{
+    flex:1; border:none; background:var(--white); color:var(--brown);
+    font-family:var(--sans); font-size:11.5px; font-weight:700;
+    padding:8px 4px; cursor:pointer;
+  }
+  .seg button + button{border-inline-start:1px solid var(--line);}
+  .seg button.active{background:var(--brown); color:var(--gold);}
+
+  .sel-sec{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px;
+    display:flex; flex-direction:column; gap:8px;
+    background:#FCFAF6;
+  }
+  .sel-sec > h3{
+    margin:0; font-size:12px; color:var(--brown);
+    display:flex; align-items:center; gap:6px;
+  }
+  .sel-sec select, .sel-sec input[type=text], .sel-sec textarea{
+    border:1px solid var(--line); border-radius:4px;
+    padding:7px 9px; font-size:12.5px; font-family:var(--mono);
+    background:var(--white); color:var(--brown); width:100%;
+  }
+  .sel-sec select:focus, .sel-sec input:focus, .sel-sec textarea:focus{outline:2px solid var(--gold);}
+  .val-list{
+    max-height:230px; overflow:auto;
+    border:1px solid var(--line); border-radius:4px;
+    background:var(--white);
+  }
+  .val-row{
+    display:flex; align-items:center; gap:8px;
+    padding:5px 9px; font-size:12px; cursor:pointer;
+    border-bottom:1px solid #F0EBE1;
+  }
+  .val-row:hover{background:var(--gold-soft);}
+  .val-row:last-child{border-bottom:none;}
+  .val-row .vr-label{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .val-row .vr-count{font-family:var(--mono); font-size:10.5px; color:#8a8378;}
+  .val-empty{padding:14px; text-align:center; color:#8a8378; font-size:12px;}
+  .mini-row{display:flex; gap:6px;}
+  .mini-row .mini-btn{flex:1; padding:6px 8px; font-size:11px;}
+  .sel-hint{font-size:11px; color:#8a8378; line-height:1.6; min-height:16px;}
+  .sel-hint b{color:var(--brown); font-family:var(--mono);}
+  .sel-hint .bad{color:var(--danger);}
+  .panel-head{
+    padding:16px 18px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .panel-head h2{font-size:14px; margin:0; flex:1;}
+  .panel-close{
+    background:none; border:none; font-size:18px; cursor:pointer; color:#8a8378;
+  }
+  .panel-body{
+    flex:1;
+    overflow:auto;
+    padding:16px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .field{display:flex; flex-direction:column; gap:4px;}
+  .field label{font-size:11px; color:#8a8378; font-weight:700;}
+  .field input, .field textarea{
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:7px 9px;
+    font-size:13px;
+    font-family:var(--mono);
+    background:var(--beige);
+    color:var(--brown);
+  }
+  .field input:focus, .field textarea:focus{outline:2px solid var(--gold); outline-offset:0; background:var(--white);}
+  .field.changed input, .field.changed textarea{border-color:var(--gold); background:#FFFBF2;}
+  .panel-foot{
+    padding:14px 18px;
+    border-top:1px solid var(--line);
+    display:flex;
+    gap:8px;
+  }
+  .panel-foot .btn{flex:1;}
+  .btn-outline{background:var(--white); border-color:var(--line); color:var(--brown);}
+  .btn-outline:hover{border-color:var(--gold);}
+  .btn-danger{background:var(--white); border-color:var(--danger); color:var(--danger);}
+  .btn-danger:hover{background:var(--danger-soft);}
+
+  /* ---------- Batch selection bar ---------- */
+  .batchbar{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    background:var(--brown);
+    color:var(--beige);
+    display:none;
+    align-items:center;
+    gap:8px;
+    padding:10px 20px;
+    /* must clear Leaflet's panes/controls (up to z-index 800), which are not
+       inside a stacking context of their own */
+    z-index:900;
+    border-top:3px solid var(--gold);
+    flex-wrap:wrap;
+    box-shadow:0 -4px 18px rgba(0,0,0,.18);
+  }
+  .batchbar.show{display:flex;}
+  .bb-count{font-size:13px; display:flex; align-items:baseline; gap:6px;}
+  .bb-count b{font-family:var(--mono); font-size:18px; color:var(--gold);}
+  .bb-note{font-size:11px; color:rgba(248,244,239,.6);}
+  .batchbar .btn{padding:7px 14px;}
+  .btn-danger-solid{background:var(--danger); color:#fff;}
+  .btn-danger-solid:hover{filter:brightness(1.1);}
+  /* --batch-h is set from JS to the bar's real (possibly wrapped) height */
+  body.has-batch .map-legend{bottom:calc(16px + var(--batch-h, 60px));}
+  body.has-batch .leaflet-control-attribution{margin-bottom:var(--batch-h, 60px);}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--brown); color:var(--beige);
+    padding:10px 18px; border-radius:99px; font-size:13px;
+    box-shadow:0 6px 20px rgba(0,0,0,.2);
+    opacity:0; pointer-events:none; transition:opacity .2s ease, bottom .2s ease;
+    z-index:1200;
+    border:1px solid var(--gold);
+  }
+  .toast.show{opacity:1; bottom:30px;}
+  body.has-batch .toast.show{bottom:calc(24px + var(--batch-h, 60px));}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 data-i18n-html="appTitle"></h1>
+  <label class="file-label" id="loadLabel"><span data-i18n="loadKmz"></span><input type="file" id="fileInput" accept=".kmz" multiple></label>
+  <div class="files-wrap">
+    <button class="btn btn-ghost" id="filesBtn" style="display:none;"></button>
+    <div class="files-pop" id="filesPop">
+      <div class="fp-head" data-i18n="filesHead"></div>
+      <div id="filesList"></div>
+      <div class="fp-note" data-i18n="filesNote"></div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn btn-ghost" id="langBtn" title="Switch language / تبديل اللغة">EN</button>
+  <button class="btn btn-ghost" id="resetBtn" data-i18n="resetAll" disabled></button>
+  <button class="btn btn-gold" id="exportBtn" data-i18n="exportKmz" disabled></button>
+</header>
+
+<div class="toolbar" id="toolbar" style="display:none;">
+  <div class="stat"><span data-i18n="statTotal"></span> <b id="statTotal">0</b></div>
+  <div class="stat"><span data-i18n="statShown"></span> <b id="statShown">0</b></div>
+  <div class="stat"><span class="pill warn" id="pillModified" style="display:none;"></span></div>
+  <div class="stat"><span class="pill danger" id="pillDeleted" style="display:none;"></span></div>
+  <div class="search-wrap">
+    <input type="text" id="searchInput" data-i18n-ph="searchPh">
+  </div>
+  <button class="mini-btn" id="selectModeBtn" data-i18n="selectMode" data-i18n-title="selectModeTip"></button>
+  <button class="mini-btn" id="selectShownBtn" data-i18n="selectShown" data-i18n-title="selectShownTip"></button>
+  <button class="mini-btn" id="advSelectBtn" data-i18n="advSelect" data-i18n-title="advSelectTip"></button>
+  <div class="view-toggle">
+    <button class="view-btn active" id="viewMapBtn" data-view="map" data-i18n="viewMap"></button>
+    <button class="view-btn" id="viewTableBtn" data-view="table" data-i18n="viewTable"></button>
+  </div>
+</div>
+
+<div class="empty" id="emptyState">
+  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+    <path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>
+  </svg>
+  <p data-i18n-html="emptyState"></p>
+</div>
+
+<div class="map-wrap" id="mapWrap" style="display:none;">
+  <div id="map"></div>
+  <div class="map-tools" id="mapTools">
+    <button data-tool="" class="active" data-i18n="toolPan" data-i18n-title="toolPanTip"></button>
+    <button data-tool="rect" data-i18n="toolRect" data-i18n-title="toolRectTip"></button>
+    <button data-tool="lasso" data-i18n="toolLasso" data-i18n-title="toolLassoTip"></button>
+    <button data-tool="brush" data-i18n="toolBrush" data-i18n-title="toolBrushTip"></button>
+  </div>
+  <div class="map-tools map-basemaps" id="mapBasemaps">
+    <button data-base="streets" class="active" data-i18n="baseStreets" data-i18n-title="baseStreetsTip"></button>
+    <button data-base="satellite" data-i18n="baseSatellite" data-i18n-title="baseSatelliteTip"></button>
+    <button data-base="hybrid" data-i18n="baseHybrid" data-i18n-title="baseHybridTip"></button>
+  </div>
+  <div class="map-legend" id="mapLegend"></div>
+  <div class="map-offline" id="offlineNote"></div>
+  <div class="map-hint" id="mapHint"></div>
+</div>
+
+<div class="table-wrap" id="tableWrap" style="display:none;">
+  <table>
+    <thead><tr id="theadRow"></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="panel" id="panel">
+  <div class="panel-head">
+    <h2 id="panelTitle"></h2>
+    <button class="panel-close" id="panelClose">✕</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+  <div class="panel-foot">
+    <button class="btn btn-outline" id="panelCancel" data-i18n="cancel"></button>
+    <button class="btn btn-gold" id="panelSave" data-i18n="saveEdit"></button>
+  </div>
+</div>
+
+<div class="panel panel-right" id="selPanel">
+  <div class="panel-head">
+    <h2 data-i18n="advSelectTitle"></h2>
+    <button class="panel-close" id="selPanelClose">✕</button>
+  </div>
+  <div class="panel-body">
+    <div class="field">
+      <label data-i18n="applyModeLabel"></label>
+      <div class="seg" id="selModeSeg">
+        <button data-mode="add" class="active" data-i18n="modeAdd"></button>
+        <button data-mode="remove" data-i18n="modeRemove"></button>
+        <button data-mode="replace" data-i18n="modeReplace"></button>
+      </div>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="secByField"></h3>
+      <select id="selField"></select>
+      <input type="text" id="selValFilter" data-i18n-ph="filterValues">
+      <div class="val-list" id="selValues"></div>
+      <div class="mini-row">
+        <button class="mini-btn" id="selValAll" data-i18n="tickAll"></button>
+        <button class="mini-btn" id="selValNone" data-i18n="untickAll"></button>
+      </div>
+      <div class="sel-hint" id="selFieldHint"></div>
+      <button class="btn btn-gold" id="selApplyField" data-i18n="applyToMatches"></button>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="secByPaste"></h3>
+      <select id="selPasteField"></select>
+      <textarea id="selPasteText" rows="6" data-i18n-ph="pastePh"></textarea>
+      <div class="sel-hint" id="selPasteHint"></div>
+      <button class="btn btn-gold" id="selApplyPaste" data-i18n="applyToPasted"></button>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="secQuick"></h3>
+      <div class="mini-row">
+        <button class="mini-btn" id="selAllPlots" data-i18n="quickAll"></button>
+        <button class="mini-btn" id="selDeletedOnes" data-i18n="quickDeleted"></button>
+        <button class="mini-btn" id="selModified" data-i18n="quickModified"></button>
+      </div>
+    </div>
+  </div>
+  <div class="panel-foot">
+    <button class="btn btn-outline" id="selPanelDone" data-i18n="close"></button>
+    <button class="btn btn-danger" id="selPanelDelete" data-i18n="deleteSelected"></button>
+  </div>
+</div>
+
+<div class="batchbar" id="batchBar">
+  <div class="bb-count"><b id="bbCount">0</b> <span data-i18n="plotsSelected"></span></div>
+  <span class="bb-note" id="bbNote"></span>
+  <div class="spacer"></div>
+  <button class="btn btn-ghost" id="bbZoom" data-i18n="zoomToSelected"></button>
+  <button class="btn btn-ghost" id="bbInvert" data-i18n="invertSelection"></button>
+  <button class="btn btn-ghost" id="bbRestore" data-i18n="restoreSelected"></button>
+  <button class="btn btn-danger-solid" id="bbDelete" data-i18n="deleteSelected"></button>
+  <button class="btn btn-ghost" id="bbClear" data-i18n="clearSelection"></button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Localisation ----------
+  const I18N = {
+    ar: {
+      title:'محرر KMZ — RCU',
+      appTitle:'محرر <span>KMZ</span> — RCU Land Use',
+      loadKmz:'تحميل ملف KMZ',
+      resetAll:'تراجع عن الكل',
+      exportKmz:'تصدير KMZ',
+      statTotal:'إجمالي:',
+      statShown:'معروض:',
+      searchPh:'ابحث في جميع الحقول (Plot ID, District...)',
+      selectMode:'☑ وضع التحديد',
+      selectModeTip:'عند تفعيله: الضغط على أي قطعة في الخريطة يحددها بدل فتح بطاقة التعديل',
+      selectShown:'تحديد المعروض',
+      selectShownTip:'تحديد كل القطع المطابقة للبحث الحالي',
+      advSelect:'⚙ تحديد متقدم',
+      advSelectTip:'تحديد بالجملة حسب الحقول أو بلصق قائمة',
+      viewMap:'🗺 خريطة',
+      viewTable:'☰ جدول',
+      emptyState:'<b>حمّل ملف KMZ</b> يحتوي على قطع أراضي (Land Use Plots) بنفس تنسيق ملفات RCU المعتادة (اسم القطعة + جدول HTML من الحقول داخل description). ستظهر القطع على خريطة تفاعلية بألوانها الأصلية — اضغط على أي قطعة للتعديل أو الحذف مباشرة، أو بدّل لعرض الجدول من الأعلى. عند التصدير يُعاد بناء نفس التنسيق والألوان دون المساس بالهندسة (Geometry).',
+      toolPan:'✥ تحريك', toolPanTip:'سحب وتحريك الخريطة',
+      toolRect:'▭ مستطيل', toolRectTip:'اسحب لرسم مستطيل وتحديد كل ما بداخله',
+      toolLasso:'✎ تحديد حر', toolLassoTip:'ارسم شكلاً حراً حول المزارع المطلوبة',
+      toolBrush:'🖌 فرشاة', toolBrushTip:'مرّر المؤشر فوق القطع وأنت ضاغط لتحديدها تباعاً',
+      baseStreets:'🗺 خريطة', baseStreetsTip:'خريطة شوارع (OpenStreetMap)',
+      baseSatellite:'🛰 قمر صناعي', baseSatelliteTip:'صور أقمار صناعية (Esri World Imagery)',
+      baseHybrid:'🛰 هجين', baseHybridTip:'صور أقمار صناعية مع أسماء الطرق والأماكن',
+      mapHint:'اضغط قطعة لبطاقتها — Ctrl+ضغط للتحديد — Shift+سحب لمستطيل — أو اختر أداة رسم بالأعلى',
+      mapHintSelect:'وضع التحديد مفعّل — اضغط على القطع لتحديدها، أو استخدم أدوات الرسم بالأعلى',
+      legendHead:'اضغط على فئة لتحديد كل قطعها',
+      legendTip:'اضغط لتحديد كل قطع هذه الفئة',
+      colName:'الاسم', colActions:'إجراءات',
+      selectAllShown:'تحديد/إلغاء كل المعروض',
+      edit:'تعديل', del:'حذف', restore:'استرجاع', select:'تحديد', deselect:'إلغاء التحديد',
+      editPlot:'تعديل: {name}',
+      fieldName:'الاسم (Name)',
+      cancel:'إلغاء', saveEdit:'حفظ التعديل', close:'إغلاق',
+      advSelectTitle:'تحديد متقدم',
+      applyModeLabel:'ماذا يفعل التطبيق بالتحديد الحالي؟',
+      modeAdd:'إضافة', modeRemove:'إزالة', modeReplace:'استبدال',
+      secByField:'١ — تحديد حسب قيمة حقل',
+      filterValues:'تصفية القيم...',
+      tickAll:'تعليم الكل', untickAll:'مسح التعليم',
+      applyToMatches:'تطبيق على القطع المطابقة',
+      secByPaste:'٢ — لصق قائمة من Excel',
+      pastePh:'الصق القيم هنا — كل قيمة في سطر، أو مفصولة بفاصلة/فاصلة منقوطة\nمثال:\nPL-001\nPL-014\nPL-027',
+      applyToPasted:'تطبيق على القيم المطابقة',
+      secQuick:'٣ — تحديد سريع',
+      quickAll:'كل القطع', quickDeleted:'المعلّمة للحذف', quickModified:'المعدّلة',
+      matchAnyField:'طابق مع أي حقل',
+      tickSomeValues:'علّم قيمة أو أكثر من القائمة',
+      fieldHint:'معلَّم <b>{v}</b> قيمة — تطابق <b>{n}</b> قطعة',
+      pasteIdle:'الصق القيم ثم اضغط تطبيق',
+      pasteHint:'<b>{t}</b> قيمة ملصقة — طابقت <b>{n}</b> قطعة',
+      pasteMissing:' — <span class="bad">{n} بدون مطابقة</span>',
+      noValues:'لا توجد قيم مطابقة', loadFirst:'حمّل ملفاً أولاً', emptyValue:'(فارغ)',
+      plotsSelected:'قطعة محددة',
+      zoomToSelected:'تكبير للمحدد', invertSelection:'عكس التحديد',
+      restoreSelected:'استرجاع المحدد', deleteSelected:'حذف المحدد', clearSelection:'إلغاء التحديد',
+      noteSomeDeleted:'({n} منها عليها علامة حذف)',
+      pillModified:'{n} معدّل', pillDeleted:'{n} محذوف',
+      unnamed:'(بدون اسم {n})',
+      // toasts / dialogs
+      loaded:'تم تحميل {n} قطعة',
+      noKml:'لم يتم العثور على ملف .kml داخل KMZ',
+      badXml:'تعذّرت قراءة الملف — XML غير صالح',
+      openError:'خطأ في فتح الملف: {msg}',
+      exported:'تم تصدير الملف — تحقق من التنزيلات',
+      exportError:'خطأ أثناء التصدير: {msg}',
+      markedDeleted:'تم وضع علامة حذف على: {name}',
+      restored:'تم استرجاع: {name}',
+      savedEdit:'تم حفظ التعديل: {name}',
+      selectedOne:'تم تحديد: {name}', deselectedOne:'أُزيل التحديد: {name}',
+      selectionCleared:'تم إلغاء التحديد',
+      noMatching:'لا توجد قطع مطابقة',
+      selectedN:'تم تحديد {n} قطعة',
+      deselectedN:'أُزيل التحديد عن {n} قطعة',
+      deselectedShown:'تم إلغاء تحديد المعروض',
+      selectedCategory:'تم تحديد {n} قطعة من نفس الفئة',
+      deselectedCategory:'تم إلغاء تحديد الفئة',
+      nowSelected:'المحدد الآن: {n} قطعة',
+      noneInArea:'لا توجد قطع داخل المنطقة المرسومة',
+      allAlreadyDeleted:'كل القطع المحددة عليها علامة حذف بالفعل',
+      noneDeletedInSel:'لا توجد قطع محذوفة ضمن التحديد',
+      markedN:'تم وضع علامة حذف على {n} قطعة',
+      restoredN:'تم استرجاع {n} قطعة',
+      noGeometry:'القطع المحددة بلا هندسة قابلة للعرض',
+      loadFileFirst:'حمّل ملف KMZ أولاً',
+      noSelectionYet:'لا يوجد تحديد بعد',
+      reloadOriginal:'أعد تحميل الملف الأصلي من جديد',
+      confirmReset:'سيتم التراجع عن جميع التعديلات والحذف غير المُصدَّرة. متابعة؟',
+      confirmBulkDelete:'سيتم وضع علامة حذف على {n} قطعة. متابعة؟\n(يمكن التراجع قبل التصدير)',
+      brushTip:'الفرشاة: اضغط ومرّر فوق المزارع لتحديدها (Alt لإلغاء التحديد)',
+      drawTip:'ارسم على الخريطة لتحديد المجموعة (Alt لإلغاء التحديد)',
+      appliedSuffix:' — {label}',
+      unmatchedSuffix:'{n} قيمة بدون مطابقة',
+      // multi-file
+      filesBtn:'📁 الملفات ({n})',
+      filesHead:'الملفات المدمجة',
+      filesNote:'يمكنك تحميل عدة ملفات KMZ وستُدمج في مستند واحد عند التصدير. كل ملف يوضع في مجلد باسمه.',
+      srcSelect:'تحديد كل قطع هذا الملف',
+      srcZoom:'تكبير على هذا الملف',
+      srcRemove:'إزالة هذا الملف',
+      fieldSource:'الملف المصدر',
+      fileError:'تعذّر فتح {file}: {msg}',
+      mergedInfo:'أُضيفت {n} قطعة من {files} ملف — الإجمالي {total}',
+      confirmRemoveSource:'إزالة الملف «{name}» و {n} قطعة معه؟',
+      removedSource:'تمت إزالة {name} ({n} قطعة)',
+      allRemoved:'تمت إزالة كل الملفات',
+      tilesBlocked:'تعذّر تحميل خلفية الخريطة (لا يوجد اتصال بالإنترنت، أو الخلفيات محجوبة على هذا الرابط). القطع والتحديد والحذف تعمل بشكل طبيعي بدونها.'
+    },
+    en: {
+      title:'KMZ Editor — RCU',
+      appTitle:'<span>KMZ</span> Editor — RCU Land Use',
+      loadKmz:'Load KMZ file',
+      resetAll:'Reset all',
+      exportKmz:'Export KMZ',
+      statTotal:'Total:',
+      statShown:'Shown:',
+      searchPh:'Search all fields (Plot ID, District...)',
+      selectMode:'☑ Select mode',
+      selectModeTip:'When on, clicking a plot on the map selects it instead of opening its card',
+      selectShown:'Select shown',
+      selectShownTip:'Select every plot matching the current search',
+      advSelect:'⚙ Advanced select',
+      advSelectTip:'Bulk-select by field values or by pasting a list',
+      viewMap:'🗺 Map',
+      viewTable:'☰ Table',
+      emptyState:'<b>Load a KMZ file</b> containing land use plots in the usual RCU format (plot name + an HTML field table inside the description). Plots are drawn on an interactive map in their original colours — click any plot to edit or delete it, or switch to the table view above. On export the same layout and colours are rebuilt, with the geometry left untouched.',
+      toolPan:'✥ Pan', toolPanTip:'Drag to pan the map',
+      toolRect:'▭ Rectangle', toolRectTip:'Drag a rectangle to select everything inside it',
+      toolLasso:'✎ Lasso', toolLassoTip:'Draw a freehand shape around the plots you want',
+      toolBrush:'🖌 Brush', toolBrushTip:'Hold and sweep the pointer over plots to select them as you go',
+      baseStreets:'🗺 Streets', baseStreetsTip:'Street map (OpenStreetMap)',
+      baseSatellite:'🛰 Satellite', baseSatelliteTip:'Satellite imagery (Esri World Imagery)',
+      baseHybrid:'🛰 Hybrid', baseHybridTip:'Satellite imagery with road and place labels',
+      mapHint:'Click a plot for its card — Ctrl+click to select — Shift+drag for a box — or pick a draw tool above',
+      mapHintSelect:'Select mode is on — click plots to select them, or use the draw tools above',
+      legendHead:'Click a category to select all its plots',
+      legendTip:'Click to select every plot in this category',
+      colName:'Name', colActions:'Actions',
+      selectAllShown:'Select / clear all shown',
+      edit:'Edit', del:'Delete', restore:'Restore', select:'Select', deselect:'Deselect',
+      editPlot:'Edit: {name}',
+      fieldName:'Name',
+      cancel:'Cancel', saveEdit:'Save changes', close:'Close',
+      advSelectTitle:'Advanced selection',
+      applyModeLabel:'What should Apply do to the current selection?',
+      modeAdd:'Add', modeRemove:'Remove', modeReplace:'Replace',
+      secByField:'1 — Select by field value',
+      filterValues:'Filter values...',
+      tickAll:'Tick all', untickAll:'Clear ticks',
+      applyToMatches:'Apply to matching plots',
+      secByPaste:'2 — Paste a list from Excel',
+      pastePh:'Paste values here — one per line, or separated by comma/semicolon\ne.g.\nPL-001\nPL-014\nPL-027',
+      applyToPasted:'Apply to matched values',
+      secQuick:'3 — Quick select',
+      quickAll:'All plots', quickDeleted:'Marked for deletion', quickModified:'Modified',
+      matchAnyField:'Match against any field',
+      tickSomeValues:'Tick one or more values from the list',
+      fieldHint:'<b>{v}</b> value(s) ticked — matching <b>{n}</b> plot(s)',
+      pasteIdle:'Paste the values, then press Apply',
+      pasteHint:'<b>{t}</b> value(s) pasted — matched <b>{n}</b> plot(s)',
+      pasteMissing:' — <span class="bad">{n} with no match</span>',
+      noValues:'No matching values', loadFirst:'Load a file first', emptyValue:'(empty)',
+      plotsSelected:'plot(s) selected',
+      zoomToSelected:'Zoom to selection', invertSelection:'Invert selection',
+      restoreSelected:'Restore selected', deleteSelected:'Delete selected', clearSelection:'Clear selection',
+      noteSomeDeleted:'({n} of them already marked for deletion)',
+      pillModified:'{n} modified', pillDeleted:'{n} deleted',
+      unnamed:'(unnamed {n})',
+      loaded:'Loaded {n} plot(s)',
+      noKml:'No .kml file found inside the KMZ',
+      badXml:'Could not read the file — invalid XML',
+      openError:'Error opening the file: {msg}',
+      exported:'Exported — check your downloads',
+      exportError:'Error while exporting: {msg}',
+      markedDeleted:'Marked for deletion: {name}',
+      restored:'Restored: {name}',
+      savedEdit:'Changes saved: {name}',
+      selectedOne:'Selected: {name}', deselectedOne:'Deselected: {name}',
+      selectionCleared:'Selection cleared',
+      noMatching:'No matching plots',
+      selectedN:'Selected {n} plot(s)',
+      deselectedN:'Deselected {n} plot(s)',
+      deselectedShown:'Cleared the shown selection',
+      selectedCategory:'Selected {n} plot(s) in this category',
+      deselectedCategory:'Category deselected',
+      nowSelected:'Now selected: {n} plot(s)',
+      noneInArea:'No plots inside the drawn area',
+      allAlreadyDeleted:'All selected plots are already marked for deletion',
+      noneDeletedInSel:'No deleted plots within the selection',
+      markedN:'Marked {n} plot(s) for deletion',
+      restoredN:'Restored {n} plot(s)',
+      noGeometry:'The selected plots have no drawable geometry',
+      loadFileFirst:'Load a KMZ file first',
+      noSelectionYet:'Nothing selected yet',
+      reloadOriginal:'Load the original file again',
+      confirmReset:'All unexported edits and deletions will be discarded. Continue?',
+      confirmBulkDelete:'{n} plot(s) will be marked for deletion. Continue?\n(reversible until you export)',
+      brushTip:'Brush: hold and sweep over the plots to select them (Alt to deselect)',
+      drawTip:'Draw on the map to select the group (Alt to deselect)',
+      appliedSuffix:' — {label}',
+      unmatchedSuffix:'{n} value(s) with no match',
+      filesBtn:'📁 Files ({n})',
+      filesHead:'Merged files',
+      filesNote:'You can load several KMZ files; they are merged into one document on export. Each file goes into a folder named after it.',
+      srcSelect:'Select every plot from this file',
+      srcZoom:'Zoom to this file',
+      srcRemove:'Remove this file',
+      fieldSource:'Source file',
+      fileError:'Could not open {file}: {msg}',
+      mergedInfo:'Added {n} plot(s) from {files} file(s) — {total} total',
+      confirmRemoveSource:'Remove the file "{name}" and its {n} plot(s)?',
+      removedSource:'Removed {name} ({n} plots)',
+      allRemoved:'All files removed',
+      tilesBlocked:'The map background could not load (no internet connection, or backgrounds are blocked on this link). Plots, selection and deletion all work without it.'
+    }
+  };
+
+  let lang = 'ar';
+  try{ lang = localStorage.getItem('kmzEditorLang') || 'ar'; }catch(e){}
+  if(!I18N[lang]) lang = 'ar';
+
+  function t(key, vars){
+    let s = (I18N[lang] && I18N[lang][key]) !== undefined ? I18N[lang][key] : (I18N.ar[key] !== undefined ? I18N.ar[key] : key);
+    if(vars) Object.keys(vars).forEach(k=>{ s = s.split('{'+k+'}').join(vars[k]); });
+    return s;
+  }
+
+  const KML_NS = "http://www.opengis.net/kml/2.2";
+  let xmlDoc = null;          // parsed KML DOM — the master doc every file is merged into
+  let sources = [];           // [{id, name, folder, count}] one entry per loaded KMZ
+  let nextIdx = 0;            // global placemark counter, unique across files
+  let placemarks = [];        // [{node, name, fields:[{key,val,orig}], title, deleted:bool, dirty:bool}]
+  let originalFileName = "map";
+  let searchTerm = "";
+
+  const fileInput = document.getElementById('fileInput');
+  const exportBtn = document.getElementById('exportBtn');
+  const resetBtn  = document.getElementById('resetBtn');
+  const toolbar   = document.getElementById('toolbar');
+  const emptyState= document.getElementById('emptyState');
+  const tableWrap = document.getElementById('tableWrap');
+  const mapWrap   = document.getElementById('mapWrap');
+  const mapLegend = document.getElementById('mapLegend');
+  const viewMapBtn = document.getElementById('viewMapBtn');
+  const viewTableBtn = document.getElementById('viewTableBtn');
+  const theadRow  = document.getElementById('theadRow');
+  const tbody     = document.getElementById('tbody');
+  const searchInput = document.getElementById('searchInput');
+  const statTotal = document.getElementById('statTotal');
+  const statShown = document.getElementById('statShown');
+  const pillModified = document.getElementById('pillModified');
+  const pillDeleted  = document.getElementById('pillDeleted');
+  const selectModeBtn = document.getElementById('selectModeBtn');
+  const selectShownBtn = document.getElementById('selectShownBtn');
+  const advSelectBtn = document.getElementById('advSelectBtn');
+  const mapHint = document.getElementById('mapHint');
+  const mapTools = document.getElementById('mapTools');
+  const mapBasemaps = document.getElementById('mapBasemaps');
+  const offlineNote = document.getElementById('offlineNote');
+  const langBtn = document.getElementById('langBtn');
+  const filesBtn = document.getElementById('filesBtn');
+  const filesPop = document.getElementById('filesPop');
+  const filesList = document.getElementById('filesList');
+  const selPanel = document.getElementById('selPanel');
+  const selField = document.getElementById('selField');
+  const selValFilter = document.getElementById('selValFilter');
+  const selValues = document.getElementById('selValues');
+  const selFieldHint = document.getElementById('selFieldHint');
+  const selPasteField = document.getElementById('selPasteField');
+  const selPasteText = document.getElementById('selPasteText');
+  const selPasteHint = document.getElementById('selPasteHint');
+  const batchBar = document.getElementById('batchBar');
+  const bbCount = document.getElementById('bbCount');
+  const bbNote  = document.getElementById('bbNote');
+  const overlay = document.getElementById('overlay');
+  const panel = document.getElementById('panel');
+  const panelBody = document.getElementById('panelBody');
+  const panelTitle = document.getElementById('panelTitle');
+  const panelClose = document.getElementById('panelClose');
+  const panelCancel = document.getElementById('panelCancel');
+  const panelSave = document.getElementById('panelSave');
+  const toast = document.getElementById('toast');
+
+  let activeIndex = null;
+  let draftFields = null;
+  let draftName = null;
+
+  let leafletMap = null;
+  let mapLayerGroup = null;
+  const mapLayers = {};       // idx -> Leaflet layer
+  let styleColorMap = {};     // styleId -> {fill:{hex,alpha}, line:{hex,alpha}}
+  let currentView = 'map';
+
+  // ---------- Multi-selection state ----------
+  const selected = new Set();   // idx values of selected placemarks
+  let selectMode = false;       // click-to-select on the map instead of opening the popup
+  let shownOrder = [];          // idx values in current visible table order (for shift+click ranges)
+  let lastAnchorIdx = null;     // last checkbox clicked, anchor for shift+click
+  let boxSelectEndedAt = 0;     // timestamp guard so a box drag doesn't also trigger a layer click
+  let pendingFit = null;        // bounds waiting to be applied once the map container is actually visible
+  let mapTool = null;           // armed drag tool on the map: null | 'rect' | 'lasso' | 'brush'
+  let legendGroups = [];        // legend rows grouped by land-use label + colour
+  let tileErrors = 0;           // failed basemap tile loads for the active source
+  let basemaps = {};            // streets | satellite | hybrid
+  let baseKey = 'streets';
+  try{ baseKey = localStorage.getItem('kmzEditorBasemap') || 'streets'; }catch(e){}
+  let selApplyMode = 'add';     // what the advanced panel does with matches: add | remove | replace
+
+  const DEFAULT_FILL = {hex:'#BA9863', alpha:0.45};
+  const DEFAULT_LINE = {hex:'#3D3936', alpha:1};
+
+  // ---------- KML colour (aabbggrr) -> CSS ----------
+  function kmlColorToCss(kmlColor){
+    if(!kmlColor || kmlColor.length < 8) return DEFAULT_FILL;
+    const aa = kmlColor.slice(0,2), bb = kmlColor.slice(2,4), gg = kmlColor.slice(4,6), rr = kmlColor.slice(6,8);
+    const alpha = parseInt(aa,16)/255;
+    const hex = '#'+rr+gg+bb;
+    return {hex, alpha: isNaN(alpha)?1:alpha};
+  }
+
+  function buildStyleColorMap(){
+    styleColorMap = {};
+    const styles = Array.from(xmlDoc.getElementsByTagName('Style'));
+    styles.forEach(s=>{
+      const id = s.getAttribute('id');
+      if(!id) return;
+      const polyColorEl = s.getElementsByTagName('PolyStyle')[0];
+      const lineColorEl = s.getElementsByTagName('LineStyle')[0];
+      const pc = polyColorEl ? polyColorEl.getElementsByTagName('color')[0] : null;
+      const lc = lineColorEl ? lineColorEl.getElementsByTagName('color')[0] : null;
+      styleColorMap[id] = {
+        fill: pc ? kmlColorToCss(pc.textContent.trim()) : DEFAULT_FILL,
+        line: lc ? kmlColorToCss(lc.textContent.trim()) : DEFAULT_LINE
+      };
+    });
+  }
+
+  // ---------- Geometry extraction (Polygon / MultiGeometry, with holes) ----------
+  function parseCoordText(text){
+    return text.trim().split(/\s+/).filter(Boolean).map(tok=>{
+      const parts = tok.split(',');
+      const lon = parseFloat(parts[0]), lat = parseFloat(parts[1]);
+      return [lat, lon];
+    });
+  }
+
+  function extractRings(placemarkNode){
+    const polys = Array.from(placemarkNode.getElementsByTagName('Polygon'));
+    if(polys.length === 0) return null;
+    const parts = polys.map(poly=>{
+      const outerWrap = poly.getElementsByTagName('outerBoundaryIs')[0];
+      const outerCoordEl = outerWrap ? outerWrap.getElementsByTagName('coordinates')[0] : null;
+      if(!outerCoordEl) return null;
+      const outer = parseCoordText(outerCoordEl.textContent);
+      const innerWraps = Array.from(poly.getElementsByTagName('innerBoundaryIs'));
+      const holes = innerWraps.map(w=>{
+        const c = w.getElementsByTagName('coordinates')[0];
+        return c ? parseCoordText(c.textContent) : [];
+      }).filter(h=>h.length>0);
+      return [outer, ...holes];
+    }).filter(Boolean);
+    return parts.length ? parts : null;
+  }
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'), 2200);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ---------- Parse an inner HTML-table description into key/value rows ----------
+  function parseDescriptionRows(rawHtml){
+    if(!rawHtml) return {title:'', rows:[]};
+    const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+    const trs = doc.querySelectorAll('tr');
+    let title = '';
+    const rows = [];
+    trs.forEach(tr=>{
+      const tds = tr.querySelectorAll('td');
+      if(tds.length === 1 && !title){
+        title = tds[0].textContent.trim();
+      } else if(tds.length === 2){
+        rows.push({key: tds[0].textContent.trim(), val: tds[1].textContent.trim()});
+      }
+    });
+    return {title, rows};
+  }
+
+  function buildDescriptionHtml(title, rows){
+    let inner = '';
+    rows.forEach((r,i)=>{
+      const bg = (i % 2 === 1) ? ' bgcolor="#D4E4F3"' : '';
+      inner += `<tr${bg}><td>${escapeHtml(r.key)}</td><td>${escapeHtml(r.val)}</td></tr>\n`;
+    });
+    return `<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+<head>
+<META http-equiv="Content-Type" content="text/html">
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+</head>
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+<td>${escapeHtml(title)}</td>
+</tr>
+<tr>
+<td>
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+${inner}</table>
+</td>
+</tr>
+</table>
+</body></html>`;
+  }
+
+  // ---------- Load / merge KMZ files ----------
+  async function readKmlFromKmz(file){
+    const zip = await JSZip.loadAsync(file);
+    let kmlEntry = null;
+    zip.forEach((path, entry)=>{ if(/\.kml$/i.test(path) && !kmlEntry) kmlEntry = entry; });
+    if(!kmlEntry) throw new Error(t('noKml'));
+    const kmlText = await kmlEntry.async('string');
+    const doc = new DOMParser().parseFromString(kmlText, 'text/xml');
+    if(doc.querySelector('parsererror')) throw new Error(t('badXml'));
+    return doc;
+  }
+
+  // Two files can easily share style ids ("s1", "poly0"...). Namespace the
+  // incoming document's ids so merged plots keep their own colours.
+  function prefixStyleIds(doc, prefix){
+    const renamed = {};
+    ['Style','StyleMap'].forEach(tag=>{
+      Array.from(doc.getElementsByTagName(tag)).forEach(el=>{
+        const id = el.getAttribute('id');
+        if(!id) return;
+        renamed[id] = prefix + id;
+        el.setAttribute('id', prefix + id);
+      });
+    });
+    Array.from(doc.getElementsByTagName('styleUrl')).forEach(su=>{
+      const v = su.textContent.trim();
+      if(!v.startsWith('#')) return;              // leave external references alone
+      const bare = v.slice(1);
+      if(renamed[bare]) su.textContent = '#' + renamed[bare];
+    });
+    return renamed;
+  }
+
+  function docContainer(doc){
+    return doc.getElementsByTagName('Document')[0] || doc.documentElement;
+  }
+
+  // Pull one parsed document into the master doc; returns the new Placemark nodes.
+  function mergeIntoMaster(doc, fileName, sourceId){
+    prefixStyleIds(doc, 'f' + sourceId + '_');
+    const master = docContainer(xmlDoc);
+    // createElementNS keeps the KML default namespace — createElement would emit xmlns=""
+    const ns = xmlDoc.documentElement.namespaceURI;
+    const folder = ns ? xmlDoc.createElementNS(ns, 'Folder') : xmlDoc.createElement('Folder');
+    const fname = ns ? xmlDoc.createElementNS(ns, 'name') : xmlDoc.createElement('name');
+    fname.textContent = fileName;
+    folder.appendChild(fname);
+
+    // styles first, at document level, so every placemark can resolve them
+    Array.from(doc.getElementsByTagName('Style'))
+      .concat(Array.from(doc.getElementsByTagName('StyleMap')))
+      .filter(el=> el.getAttribute('id'))
+      .forEach(el=> master.appendChild(xmlDoc.importNode(el, true)));
+
+    const added = [];
+    Array.from(doc.getElementsByTagName('Placemark')).forEach(pmNode=>{
+      const imported = xmlDoc.importNode(pmNode, true);
+      folder.appendChild(imported);
+      added.push(imported);
+    });
+    master.appendChild(folder);
+    return {nodes: added, folder};
+  }
+
+  function buildPlacemark(node, source){
+    const nameEl = node.getElementsByTagName('name')[0];
+    const descEl = node.getElementsByTagName('description')[0];
+    const styleUrlEl = node.getElementsByTagName('styleUrl')[0];
+    const parsed = parseDescriptionRows(descEl ? descEl.textContent : '');
+    const idx = nextIdx++;
+    return {
+      idx,
+      node,
+      nameEl,
+      descEl,
+      sourceId: source.id,
+      sourceName: source.name,
+      styleId: styleUrlEl ? styleUrlEl.textContent.trim().replace(/^#/,'') : null,
+      rings: extractRings(node),
+      name: nameEl ? nameEl.textContent.trim() : t('unnamed', {n: idx}),
+      title: parsed.title,
+      fields: parsed.rows,
+      deleted: false,
+      dirty: false
+    };
+  }
+
+  fileInput.addEventListener('change', async (e)=>{
+    const files = Array.from(e.target.files || []);
+    if(!files.length) return;
+    let addedTotal = 0, addedFiles = 0;
+    for(const file of files){
+      try{
+        const doc = await readKmlFromKmz(file);
+        const source = {id: sources.length, name: file.name.replace(/\.kmz$/i,'')};
+        let nodes;
+        if(!xmlDoc){
+          xmlDoc = doc;                       // first file becomes the master document
+          originalFileName = source.name;
+          nodes = Array.from(xmlDoc.getElementsByTagName('Placemark'));
+          source.folder = null;
+        } else {
+          const merged = mergeIntoMaster(doc, source.name, source.id);
+          nodes = merged.nodes;
+          source.folder = merged.folder;
+        }
+        sources.push(source);
+        const fresh = nodes.map(n=> buildPlacemark(n, source))
+                           .filter(pm => pm.fields.length > 0 || pm.name);
+        source.count = fresh.length;
+        placemarks = placemarks.concat(fresh);
+        addedTotal += fresh.length;
+        addedFiles++;
+      }catch(err){
+        console.error(err);
+        showToast(t('fileError', {file: file.name, msg: err.message}));
+      }
+    }
+    fileInput.value = '';                     // allow re-picking the same file later
+    if(!addedFiles) return;
+    refreshAfterSourceChange();
+    showToast(sources.length > 1
+      ? t('mergedInfo', {n: addedTotal, files: addedFiles, total: placemarks.length})
+      : t('loaded', {n: addedTotal}));
+  });
+
+  // Rebuild everything that depends on the set of loaded plots.
+  function refreshAfterSourceChange(){
+    lastAnchorIdx = null;
+    if(!placemarks.length){ clearWorkspace(); return; }
+    buildStyleColorMap();
+    buildColumns();
+    renderTable();
+    // reveal the map container *before* initMap so fitBounds sees real dimensions
+    toolbar.style.display = 'flex';
+    emptyState.style.display = 'none';
+    setView(currentView);
+    initMap();
+    refreshAllMapVisuals();   // initMap draws fresh layers; restore deleted/dirty/selected looks
+    buildMapLegend();
+    buildFieldSelectors();
+    renderSourceList();
+    setMapTool(null);
+    exportBtn.disabled = false;
+    resetBtn.disabled = false;
+  }
+
+  // ---------- Loaded files ----------
+  function renderSourceList(){
+    filesBtn.style.display = sources.length ? 'inline-block' : 'none';
+    filesBtn.textContent = t('filesBtn', {n: sources.length});
+    filesList.innerHTML = sources.map(s=>{
+      const live = placemarks.filter(p=>p.sourceId === s.id);
+      const del = live.filter(p=>p.deleted).length;
+      return `<div class="src-row" data-src="${s.id}">
+        <span class="src-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
+        <span class="src-count">${live.length}${del ? ' − ' + del : ''}</span>
+        <button class="icon-btn" data-sact="select" title="${escapeHtml(t('srcSelect'))}">☑</button>
+        <button class="icon-btn" data-sact="zoom" title="${escapeHtml(t('srcZoom'))}">⌖</button>
+        <button class="icon-btn danger" data-sact="remove" title="${escapeHtml(t('srcRemove'))}">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  filesBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    filesPop.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!filesPop.contains(e.target) && e.target !== filesBtn) filesPop.classList.remove('open');
+  });
+
+  filesList.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-sact]');
+    if(!btn) return;
+    const sourceId = Number(btn.closest('.src-row').dataset.src);
+    const source = sources.find(s=>s.id === sourceId);
+    const mine = placemarks.filter(p=>p.sourceId === sourceId);
+    if(!source) return;
+
+    if(btn.dataset.sact === 'select'){
+      const allSel = mine.length && mine.every(p=>selected.has(p.idx));
+      mine.forEach(p=> setSelected(p, !allSel));
+      renderTable();
+      showToast(allSel ? t('deselectedN', {n: mine.length}) : t('selectedN', {n: mine.length}));
+      return;
+    }
+    if(btn.dataset.sact === 'zoom'){
+      const pts = [];
+      mine.forEach(p=>{ if(p.rings) p.rings.forEach(part=> part.forEach(r=> r.forEach(pt=> pts.push(pt)))); });
+      if(!pts.length){ showToast(t('noGeometry')); return; }
+      setView('map');
+      setTimeout(()=>{ leafletMap.invalidateSize(); leafletMap.fitBounds(pts, {padding:[40,40]}); }, 60);
+      return;
+    }
+    // remove: drop the file's nodes from the merged document entirely
+    if(!confirm(t('confirmRemoveSource', {name: source.name, n: mine.length}))) return;
+    removeSource(source);
+  });
+
+  function removeSource(source){
+    const mine = placemarks.filter(p=>p.sourceId === source.id);
+    mine.forEach(p=>{
+      if(p.node && p.node.parentNode) p.node.parentNode.removeChild(p.node);
+      selected.delete(p.idx);
+      const layer = mapLayers[p.idx];
+      if(layer && mapLayerGroup){ mapLayerGroup.removeLayer(layer); }
+      delete mapLayers[p.idx];
+    });
+    if(source.folder && source.folder.parentNode) source.folder.parentNode.removeChild(source.folder);
+    placemarks = placemarks.filter(p=>p.sourceId !== source.id);
+    sources = sources.filter(s=>s.id !== source.id);
+    if(!placemarks.length){ clearWorkspace(); showToast(t('allRemoved')); return; }
+    refreshAfterSourceChange();
+    showToast(t('removedSource', {name: source.name, n: mine.length}));
+  }
+
+  // ---------- Map ----------
+  function initMap(){
+    if(leafletMap){
+      mapLayerGroup.clearLayers();
+      Object.keys(mapLayers).forEach(k=>delete mapLayers[k]);
+    } else {
+      leafletMap = L.map('map', {zoomControl:true, boxZoom:false}).setView([26.63, 37.9], 12);
+      buildBasemaps();
+      applyBasemap(baseKey, true);
+      mapLayerGroup = L.layerGroup().addTo(leafletMap);
+      enableMapSelectTools(leafletMap);   // shift+drag / lasso / brush replace Leaflet's box-zoom
+    }
+
+    const bounds = [];
+    placemarks.forEach(pm=>{
+      if(!pm.rings) return;
+      const style = styleColorMap[pm.styleId] || {fill:DEFAULT_FILL, line:DEFAULT_LINE};
+      const layer = L.polygon(pm.rings, {
+        color: style.line.hex,
+        weight: 1,
+        opacity: style.line.alpha,
+        fillColor: style.fill.hex,
+        fillOpacity: style.fill.alpha
+      });
+      layer.on('click', (ev)=>{
+        const oe = ev.originalEvent;
+        if(Date.now() - boxSelectEndedAt < 300) return;
+        if(selectMode || (oe && (oe.ctrlKey || oe.metaKey))){
+          if(oe) L.DomEvent.stop(oe);
+          // a popup bound by an earlier plain click would otherwise reopen on every click
+          if(layer.getPopup()){ layer.closePopup(); layer.unbindPopup(); }
+          const on = setSelected(pm);
+          renderTable();
+          showToast(on ? t('selectedOne', {name: pm.name}) : t('deselectedOne', {name: pm.name}));
+          return;
+        }
+        showQuickPopup(pm, layer);
+      });
+      layer.addTo(mapLayerGroup);
+      mapLayers[pm.idx] = layer;
+      pm.rings.forEach(part=> part.forEach(ring=> ring.forEach(pt=> bounds.push(pt))));
+    });
+
+    // Defer the fit: if the map container is still hidden it has zero size, and
+    // fitBounds would snap to max zoom with every plot collapsed onto one point.
+    pendingFit = bounds.length ? bounds : null;
+    fitMapIfVisible();
+  }
+
+  function fitMapIfVisible(){
+    if(!leafletMap || !pendingFit) return;
+    if(currentView !== 'map' || !mapWrap.offsetParent) return;
+    leafletMap.invalidateSize();
+    leafletMap.fitBounds(pendingFit, {padding:[20,20]});
+    pendingFit = null;
+  }
+
+  // ---------- Basemaps (streets / satellite / hybrid) ----------
+  const OSM_URL  = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const ESRI_IMG = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  const ESRI_REF = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+  const ESRI_ATTR = 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+
+  // Tiles can fail when offline, behind a proxy, or on a host that blocks
+  // external requests. Say so instead of leaving a blank map.
+  function watchTiles(layer){
+    const layers = layer.eachLayer ? [] : [layer];
+    if(layer.eachLayer) layer.eachLayer(l=> layers.push(l));
+    layers.forEach(l=> l.on('tileerror', ()=>{
+      tileErrors++;
+      if(tileErrors > 4 && !mapWrap.classList.contains('tiles-down')){
+        mapWrap.classList.add('tiles-down');
+        offlineNote.textContent = t('tilesBlocked');
+      }
+    }));
+  }
+
+  function buildBasemaps(){
+    basemaps = {
+      streets: L.tileLayer(OSM_URL, {
+        maxZoom:19, attribution:'&copy; OpenStreetMap contributors'
+      }),
+      satellite: L.tileLayer(ESRI_IMG, {
+        maxZoom:21, maxNativeZoom:19, attribution: ESRI_ATTR
+      }),
+      // imagery with road/place labels drawn on top
+      hybrid: L.layerGroup([
+        L.tileLayer(ESRI_IMG, {maxZoom:21, maxNativeZoom:19, attribution: ESRI_ATTR}),
+        L.tileLayer(ESRI_REF, {maxZoom:21, maxNativeZoom:19})
+      ])
+    };
+  }
+
+  function applyBasemap(key, skipRemove){
+    if(!basemaps[key]) key = 'streets';
+    if(!skipRemove && basemaps[baseKey]) leafletMap.removeLayer(basemaps[baseKey]);
+    baseKey = key;
+    tileErrors = 0;
+    mapWrap.classList.remove('tiles-down');   // give the new source a fair chance
+    watchTiles(basemaps[key]);
+    basemaps[key].addTo(leafletMap);
+    if(basemaps[key].bringToBack) basemaps[key].bringToBack();
+    else basemaps[key].eachLayer(l=> l.bringToBack && l.bringToBack());
+    Array.from(mapBasemaps.querySelectorAll('button')).forEach(b=>
+      b.classList.toggle('active', b.dataset.base === key));
+    try{ localStorage.setItem('kmzEditorBasemap', key); }catch(e){}
+  }
+
+  mapBasemaps.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-base]');
+    if(!btn || !leafletMap) return;
+    if(btn.dataset.base === baseKey) return;
+    applyBasemap(btn.dataset.base);
+  });
+
+  // ---------- Geometry helpers for lasso / brush hit-testing ----------
+  // ray casting on [lat,lng] rings; lng is x, lat is y
+  function pointInRing(lat, lng, ring){
+    let inside = false;
+    for(let i = 0, j = ring.length - 1; i < ring.length; j = i++){
+      const yi = ring[i][0], xi = ring[i][1];
+      const yj = ring[j][0], xj = ring[j][1];
+      if(((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
+  }
+
+  // a placemark can be several polygon parts, each with holes
+  function pointInPlacemark(pm, lat, lng){
+    if(!pm.rings) return false;
+    return pm.rings.some(part=>{
+      if(!pointInRing(lat, lng, part[0])) return false;
+      for(let h = 1; h < part.length; h++){
+        if(pointInRing(lat, lng, part[h])) return false;   // fell into a hole
+      }
+      return true;
+    });
+  }
+
+  // does a plot fall inside a freehand lasso ring?
+  function placemarkInLasso(pm, lassoRing, lassoBounds){
+    const layer = mapLayers[pm.idx];
+    if(!layer || !lassoBounds.intersects(layer.getBounds())) return false;
+    // any vertex of the plot inside the lasso...
+    for(const part of pm.rings){
+      for(const pt of part[0]){
+        if(pointInRing(pt[0], pt[1], lassoRing)) return true;
+      }
+    }
+    // ...or a lasso drawn entirely inside one big plot
+    return pointInPlacemark(pm, lassoRing[0][0], lassoRing[0][1]);
+  }
+
+  function selectableTargets(){
+    // bulk tools never touch rows the current search has filtered out
+    return placemarks.filter(pm=> mapLayers[pm.idx] && matchesSearch(pm));
+  }
+
+  function announceDrag(changed, additive){
+    showToast(changed
+      ? (additive ? t('selectedN', {n: changed}) : t('deselectedN', {n: changed}))
+      : t('noneInArea'));
+  }
+
+  // ---------- Map selection tools: rectangle / lasso / brush ----------
+  function enableMapSelectTools(map){
+    let mode = null;          // active gesture: 'rect' | 'lasso' | 'brush'
+    let origin = null, current = null, shape = null, additive = true;
+    let lassoPts = [], brushHits = 0;
+
+    function begin(e){
+      const oe = e.originalEvent;
+      if(!oe || oe.button !== 0) return;
+      // Shift always means rectangle, whatever tool is armed
+      mode = oe.shiftKey ? 'rect' : (mapTool || null);
+      if(!mode) return;
+      additive = !oe.altKey;              // Alt inverts the gesture into a deselect
+      origin = current = e.latlng;
+      map.dragging.disable();
+      L.DomUtil.disableTextSelection();
+
+      const skin = {color:'#7A5F2A', weight:1.5, dashArray:'5,4',
+                    fillColor:'#BA9863', fillOpacity:.12, interactive:false};
+      if(mode === 'rect'){
+        shape = L.rectangle([origin, origin], skin).addTo(map);
+      } else if(mode === 'lasso'){
+        lassoPts = [[e.latlng.lat, e.latlng.lng]];
+        shape = L.polygon([lassoPts], skin).addTo(map);
+      } else {
+        brushHits = 0;
+        paintAt(e.latlng);
+      }
+    }
+
+    function paintAt(latlng){
+      selectableTargets().forEach(pm=>{
+        if(selected.has(pm.idx) === additive) return;
+        const layer = mapLayers[pm.idx];
+        if(!layer.getBounds().contains(latlng)) return;      // cheap reject first
+        if(!pointInPlacemark(pm, latlng.lat, latlng.lng)) return;
+        setSelected(pm, additive);
+        brushHits++;
+        updateSelectionUI();       // table is re-rendered once, at the end of the stroke
+      });
+    }
+
+    function move(e){
+      if(!mode) return;
+      current = e.latlng;
+      if(mode === 'rect'){
+        shape.setBounds(L.latLngBounds(origin, current));
+      } else if(mode === 'lasso'){
+        lassoPts.push([e.latlng.lat, e.latlng.lng]);
+        shape.setLatLngs([lassoPts]);
+      } else {
+        paintAt(e.latlng);
+      }
+    }
+
+    function finish(){
+      if(!mode) return;
+      const gesture = mode;
+      mode = null;
+      boxSelectEndedAt = Date.now();   // swallow the click the browser fires after a drag
+      map.dragging.enable();
+      L.DomUtil.enableTextSelection();
+      if(shape){ map.removeLayer(shape); shape = null; }
+
+      if(gesture === 'brush'){
+        renderTable();
+        announceDrag(brushHits, additive);
+        return;
+      }
+
+      let changed = 0;
+      if(gesture === 'rect'){
+        const bounds = L.latLngBounds(origin, current);
+        // a click without a real drag shouldn't sweep anything up
+        const nw = map.latLngToContainerPoint(bounds.getNorthWest());
+        const se = map.latLngToContainerPoint(bounds.getSouthEast());
+        if(Math.abs(se.x - nw.x) < 5 && Math.abs(se.y - nw.y) < 5) return;
+        selectableTargets().forEach(pm=>{
+          if(selected.has(pm.idx) === additive) return;
+          if(!bounds.intersects(mapLayers[pm.idx].getBounds())) return;
+          setSelected(pm, additive);
+          changed++;
+        });
+      } else {
+        if(lassoPts.length < 3) return;
+        const lassoBounds = L.latLngBounds(lassoPts);
+        selectableTargets().forEach(pm=>{
+          if(selected.has(pm.idx) === additive) return;
+          if(!placemarkInLasso(pm, lassoPts, lassoBounds)) return;
+          setSelected(pm, additive);
+          changed++;
+        });
+        lassoPts = [];
+      }
+      renderTable();
+      announceDrag(changed, additive);
+    }
+
+    map.on('mousedown', begin);
+    map.on('mousemove', move);
+    map.on('mouseup', finish);
+    // mouse released outside the map container
+    document.addEventListener('mouseup', ()=>{ if(mode) finish(); });
+  }
+
+  function setMapTool(tool){
+    mapTool = tool || null;
+    Array.from(mapTools.querySelectorAll('button')).forEach(b=>{
+      b.classList.toggle('active', (b.dataset.tool || null) === mapTool);
+    });
+    if(leafletMap){
+      L.DomUtil[mapTool ? 'addClass' : 'removeClass'](leafletMap.getContainer(), 'leaflet-crosshair');
+    }
+  }
+
+  mapTools.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-tool]');
+    if(!btn) return;
+    const tool = btn.dataset.tool || null;
+    setMapTool(mapTool === tool ? null : tool);
+    if(mapTool){
+      showToast(mapTool === 'brush' ? t('brushTip') : t('drawTip'));
+    }
+  });
+
+  function legendLabelOf(pm){
+    const f = pm.fields.find(x=>/land use level 0?1 description/i.test(x.key));
+    return f ? f.val : (pm.styleId || '');
+  }
+
+  function buildMapLegend(){
+    // Merged files often repeat the same land use under different style ids —
+    // group by label+colour so one category is one legend row.
+    const groups = new Map();
+    placemarks.forEach(pm=>{
+      if(!pm.styleId) return;
+      const colour = (styleColorMap[pm.styleId] || {fill:DEFAULT_FILL}).fill.hex;
+      const label = legendLabelOf(pm);
+      const key = label + '|' + colour;
+      let g = groups.get(key);
+      if(!g){ g = {label, colour, ids:new Set(), count:0}; groups.set(key, g); }
+      g.ids.add(pm.styleId);
+      g.count++;
+    });
+    // keep the style ids in JS and reference groups by index — no escaping games
+    legendGroups = [...groups.values()].sort((a,b)=> b.count - a.count);
+    const rows = legendGroups.map((g, i)=>
+      `<div class="lg-row" data-group="${i}" title="${escapeHtml(t('legendTip'))}">
+        <span class="lg-swatch" style="background:${g.colour}"></span>${escapeHtml(g.label)}
+        <span class="lg-count">${g.count}</span></div>`);
+    mapLegend.innerHTML = rows.length
+      ? `<div class="lg-head">${escapeHtml(t('legendHead'))}</div>` + rows.join('')
+      : '';
+  }
+
+  mapLegend.addEventListener('click', (e)=>{
+    const row = e.target.closest('.lg-row');
+    if(!row) return;
+    const group = legendGroups[Number(row.dataset.group)];
+    if(!group) return;
+    const targets = placemarks.filter(p=> group.ids.has(p.styleId));
+    if(!targets.length) return;
+    const allSelected = targets.every(p=>selected.has(p.idx));
+    targets.forEach(p=> setSelected(p, !allSelected));
+    renderTable();
+    showToast(allSelected ? t('deselectedCategory') : t('selectedCategory', {n: targets.length}));
+  });
+
+  function showQuickPopup(pm, layer){
+    const container = document.createElement('div');
+    container.className = 'map-popup';
+    container.innerHTML = `<div class="mp-title">${escapeHtml(pm.name)}</div>
+      <div class="mp-actions">
+        <button class="btn btn-gold btn-sm" data-act="edit">${escapeHtml(t('edit'))}</button>
+        <button class="btn btn-outline btn-sm" data-act="del">${escapeHtml(pm.deleted?t('restore'):t('del'))}</button>
+        <button class="btn btn-outline btn-sm" data-act="sel">${escapeHtml(selected.has(pm.idx)?t('deselect'):t('select'))}</button>
+      </div>`;
+    container.querySelector('[data-act="sel"]').addEventListener('click', ()=>{
+      const on = setSelected(pm);
+      layer.closePopup();
+      layer.unbindPopup();
+      renderTable();
+      showToast(on ? t('selectedOne', {name: pm.name}) : t('deselectedOne', {name: pm.name}));
+    });
+    container.querySelector('[data-act="edit"]').addEventListener('click', ()=>{
+      layer.closePopup();
+      openPanel(pm);
+    });
+    container.querySelector('[data-act="del"]').addEventListener('click', ()=>{
+      pm.deleted = !pm.deleted;
+      layer.closePopup();
+      refreshPlacemarkVisual(pm);
+      renderTable();
+      showToast(pm.deleted ? t('markedDeleted', {name: pm.name}) : t('restored', {name: pm.name}));
+    });
+    layer.bindPopup(container).openPopup();
+  }
+
+  function refreshPlacemarkVisual(pm){
+    const layer = mapLayers[pm.idx];
+    if(!layer) return;
+    const style = styleColorMap[pm.styleId] || {fill:DEFAULT_FILL, line:DEFAULT_LINE};
+    const matches = matchesSearch(pm);
+    if(selected.has(pm.idx)){
+      // selection always wins visually so the group being acted on is unmistakable
+      layer.setStyle({
+        color:'#7A5F2A', weight:3, opacity:1,
+        fillColor: pm.deleted ? '#B84A3E' : '#BA9863',
+        fillOpacity: pm.deleted ? .25 : .6,
+        dashArray: pm.deleted ? '5,5' : null
+      });
+      return;
+    }
+    if(pm.deleted){
+      layer.setStyle({color:'#B84A3E', weight:2, opacity:.9, fillColor:'#B84A3E', fillOpacity:.12, dashArray:'5,5'});
+    } else if(pm.dirty){
+      layer.setStyle({color:'#BA9863', weight:2, opacity:1, fillColor:style.fill.hex, fillOpacity:style.fill.alpha, dashArray:null});
+    } else {
+      layer.setStyle({color:style.line.hex, weight:1, opacity: matches?style.line.alpha:0.06, fillColor:style.fill.hex, fillOpacity: matches?style.fill.alpha:0.03, dashArray:null});
+    }
+  }
+
+  function refreshAllMapVisuals(){
+    placemarks.forEach(refreshPlacemarkVisual);
+  }
+
+  // ---------- Multi-selection ----------
+  function setSelected(pm, on){
+    if(on === undefined) on = !selected.has(pm.idx);
+    if(on) selected.add(pm.idx); else selected.delete(pm.idx);
+    refreshPlacemarkVisual(pm);
+    return on;
+  }
+
+  function selectedPlacemarks(){
+    return placemarks.filter(p=>selected.has(p.idx));
+  }
+
+  function clearSelection(silent){
+    if(!selected.size) return;
+    const affected = selectedPlacemarks();
+    selected.clear();
+    affected.forEach(refreshPlacemarkVisual);
+    renderTable();
+    if(!silent) showToast(t('selectionCleared'));
+  }
+
+  function updateSelectionUI(){
+    const n = selected.size;
+    bbCount.textContent = n;
+    batchBar.classList.toggle('show', n > 0);
+    document.body.classList.toggle('has-batch', n > 0);
+    // the bar wraps to two rows on narrow screens — let the map overlays follow its real height
+    document.documentElement.style.setProperty('--batch-h', (n > 0 ? batchBar.offsetHeight : 0) + 'px');
+    if(n > 0){
+      const delCount = selectedPlacemarks().filter(p=>p.deleted).length;
+      bbNote.textContent = delCount ? t('noteSomeDeleted', {n: delCount}) : '';
+    } else {
+      bbNote.textContent = '';
+      lastAnchorIdx = null;
+    }
+    // header "select all shown" checkbox reflects the visible subset
+    const selAll = document.getElementById('selAllChk');
+    if(selAll){
+      const shownSelected = shownOrder.filter(i=>selected.has(i)).length;
+      selAll.checked = shownOrder.length > 0 && shownSelected === shownOrder.length;
+      selAll.indeterminate = shownSelected > 0 && shownSelected < shownOrder.length;
+    }
+  }
+
+  function setSelectMode(on){
+    selectMode = on;
+    selectModeBtn.classList.toggle('active', on);
+    mapHint.textContent = on ? t('mapHintSelect') : t('mapHint');
+    if(leafletMap){
+      L.DomUtil[on?'addClass':'removeClass'](leafletMap.getContainer(), 'leaflet-crosshair');
+    }
+  }
+
+  selectModeBtn.addEventListener('click', ()=> setSelectMode(!selectMode));
+
+  selectShownBtn.addEventListener('click', ()=>{
+    const targets = placemarks.filter(matchesSearch);
+    if(!targets.length){ showToast(t('noMatching')); return; }
+    const allSelected = targets.every(p=>selected.has(p.idx));
+    targets.forEach(p=> setSelected(p, !allSelected));
+    renderTable();
+    showToast(allSelected ? t('deselectedShown') : t('selectedN', {n: targets.length}));
+  });
+
+  // ---------- Advanced (rule based) selection ----------
+  const NAME_KEY = '__name__';
+  const SOURCE_KEY = '__source__';
+  let checkedValues = new Set();   // values ticked in the field list
+
+  function fieldValueOf(pm, key){
+    if(key === NAME_KEY) return pm.name;
+    if(key === SOURCE_KEY) return pm.sourceName || '';
+    const f = pm.fields.find(x=>x.key === key);
+    return f ? f.val : '';
+  }
+
+  function allFieldKeys(){
+    const keys = [];
+    const seen = new Set();
+    placemarks.forEach(pm=> pm.fields.forEach(f=>{
+      if(!seen.has(f.key)){ seen.add(f.key); keys.push(f.key); }
+    }));
+    return keys;
+  }
+
+  function buildFieldSelectors(){
+    const keys = allFieldKeys();
+    const opts = `<option value="${NAME_KEY}">${escapeHtml(t('fieldName'))}</option>` +
+      (sources.length > 1 ? `<option value="${SOURCE_KEY}">${escapeHtml(t('fieldSource'))}</option>` : '') +
+      keys.map(k=>`<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    selField.innerHTML = opts;
+    selPasteField.innerHTML = `<option value="">${escapeHtml(t('matchAnyField'))}</option>` + opts;
+    // default the paste matcher to something ID-like when we can spot one
+    const idKey = keys.find(k=>/plot\s*id|parcel|رقم/i.test(k));
+    selPasteField.value = idKey || '';
+    checkedValues = new Set();
+    selValFilter.value = '';
+    renderValueList();
+  }
+
+  function distinctValues(key){
+    const counts = new Map();
+    placemarks.forEach(pm=>{
+      const v = fieldValueOf(pm, key);
+      counts.set(v, (counts.get(v) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a,b)=> b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'ar'));
+  }
+
+  function renderValueList(){
+    if(!placemarks.length){ selValues.innerHTML = `<div class="val-empty">${escapeHtml(t('loadFirst'))}</div>`; return; }
+    const key = selField.value;
+    const filter = selValFilter.value.trim().toLowerCase();
+    const rows = distinctValues(key)
+      .filter(([v])=> !filter || String(v).toLowerCase().includes(filter));
+    selValues.innerHTML = rows.length ? rows.map(([v, n])=>{
+      const label = v === '' ? t('emptyValue') : v;
+      return `<label class="val-row">
+        <input type="checkbox" data-val="${escapeHtml(v)}" ${checkedValues.has(v)?'checked':''}>
+        <span class="vr-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
+        <span class="vr-count">${n}</span></label>`;
+    }).join('') : `<div class="val-empty">${escapeHtml(t('noValues'))}</div>`;
+    updateFieldHint();
+  }
+
+  function fieldMatches(){
+    if(!checkedValues.size) return [];
+    const key = selField.value;
+    return placemarks.filter(pm=> checkedValues.has(fieldValueOf(pm, key)));
+  }
+
+  function updateFieldHint(){
+    const n = fieldMatches().length;
+    selFieldHint.innerHTML = checkedValues.size
+      ? t('fieldHint', {v: checkedValues.size, n: n})
+      : t('tickSomeValues');
+  }
+
+  selField.addEventListener('change', ()=>{ checkedValues = new Set(); renderValueList(); });
+  selValFilter.addEventListener('input', renderValueList);
+
+  selValues.addEventListener('change', (e)=>{
+    const cb = e.target.closest('input[data-val]');
+    if(!cb) return;
+    if(cb.checked) checkedValues.add(cb.dataset.val); else checkedValues.delete(cb.dataset.val);
+    updateFieldHint();
+  });
+
+  document.getElementById('selValAll').addEventListener('click', ()=>{
+    // only the values currently visible under the filter
+    Array.from(selValues.querySelectorAll('input[data-val]')).forEach(cb=>{
+      cb.checked = true; checkedValues.add(cb.dataset.val);
+    });
+    updateFieldHint();
+  });
+  document.getElementById('selValNone').addEventListener('click', ()=>{
+    checkedValues = new Set();
+    renderValueList();
+  });
+
+  document.getElementById('selModeSeg').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-mode]');
+    if(!btn) return;
+    selApplyMode = btn.dataset.mode;
+    Array.from(e.currentTarget.querySelectorAll('button')).forEach(b=>
+      b.classList.toggle('active', b === btn));
+  });
+
+  // apply a computed match set according to the chosen mode
+  function applyMatches(matches, label){
+    if(!matches.length){ showToast(t('noMatching')); return; }
+    if(selApplyMode === 'replace'){
+      const prev = selectedPlacemarks();
+      selected.clear();
+      prev.forEach(refreshPlacemarkVisual);
+    }
+    const on = selApplyMode !== 'remove';
+    let changed = 0;
+    matches.forEach(pm=>{
+      if(selected.has(pm.idx) === on) return;
+      setSelected(pm, on);
+      changed++;
+    });
+    renderTable();
+    const n = selApplyMode === 'replace' ? matches.length : changed;
+    const base = selApplyMode === 'remove' ? t('deselectedN', {n}) : t('selectedN', {n});
+    showToast(base + (label ? t('appliedSuffix', {label}) : ''));
+  }
+
+  document.getElementById('selApplyField').addEventListener('click', ()=>{
+    applyMatches(fieldMatches(), selField.options[selField.selectedIndex].text);
+  });
+
+  function parsePastedList(){
+    return [...new Set(selPasteText.value
+      .split(/[\n,;\t]+/)
+      .map(s=>s.trim().toLowerCase())
+      .filter(Boolean))];
+  }
+
+  function pasteMatches(){
+    const tokens = parsePastedList();
+    if(!tokens.length) return {matches:[], tokens:[], missing:[]};
+    const key = selPasteField.value;
+    const hit = new Set();
+    const matches = [];
+    placemarks.forEach(pm=>{
+      const hay = key
+        ? [fieldValueOf(pm, key)]
+        : [pm.name, ...pm.fields.map(f=>f.val)];
+      const lower = hay.map(v=>String(v).trim().toLowerCase());
+      const found = tokens.find(t=> lower.includes(t));
+      if(found !== undefined){ matches.push(pm); hit.add(found); }
+    });
+    return {matches, tokens, missing: tokens.filter(t=>!hit.has(t))};
+  }
+
+  function updatePasteHint(){
+    const {matches, tokens, missing} = pasteMatches();
+    if(!tokens.length){ selPasteHint.textContent = t('pasteIdle'); return; }
+    selPasteHint.innerHTML = t('pasteHint', {t: tokens.length, n: matches.length}) +
+      (missing.length ? t('pasteMissing', {n: missing.length}) : '');
+  }
+
+  selPasteText.addEventListener('input', updatePasteHint);
+  selPasteField.addEventListener('change', updatePasteHint);
+
+  document.getElementById('selApplyPaste').addEventListener('click', ()=>{
+    const {matches, missing} = pasteMatches();
+    applyMatches(matches, missing.length ? t('unmatchedSuffix', {n: missing.length}) : '');
+    updatePasteHint();
+  });
+
+  document.getElementById('selAllPlots').addEventListener('click', ()=> applyMatches(placemarks.slice(), t('quickAll')));
+  document.getElementById('selDeletedOnes').addEventListener('click', ()=> applyMatches(placemarks.filter(p=>p.deleted), t('quickDeleted')));
+  document.getElementById('selModified').addEventListener('click', ()=> applyMatches(placemarks.filter(p=>p.dirty), t('quickModified')));
+
+  function openSelPanel(){
+    if(!placemarks.length){ showToast(t('loadFileFirst')); return; }
+    closePanel();
+    buildFieldSelectors();
+    updatePasteHint();
+    selPanel.classList.add('open');
+    overlay.classList.add('open');
+  }
+  function closeSelPanel(){
+    selPanel.classList.remove('open');
+    if(!panel.classList.contains('open')) overlay.classList.remove('open');
+  }
+  advSelectBtn.addEventListener('click', openSelPanel);
+  document.getElementById('selPanelClose').addEventListener('click', closeSelPanel);
+  document.getElementById('selPanelDone').addEventListener('click', closeSelPanel);
+  document.getElementById('selPanelDelete').addEventListener('click', ()=>{
+    if(!selected.size){ showToast(t('noSelectionYet')); return; }
+    batchSetDeleted(true);
+  });
+
+  // ---------- Batch actions ----------
+  function batchSetDeleted(flag){
+    const targets = selectedPlacemarks();
+    if(!targets.length) return;
+    const changing = targets.filter(p=>p.deleted !== flag);
+    if(!changing.length){
+      showToast(flag ? t('allAlreadyDeleted') : t('noneDeletedInSel'));
+      return;
+    }
+    if(flag && changing.length >= 20 &&
+       !confirm(t('confirmBulkDelete', {n: changing.length}))) return;
+    changing.forEach(p=>{ p.deleted = flag; refreshPlacemarkVisual(p); });
+    renderTable();
+    showToast(flag ? t('markedN', {n: changing.length}) : t('restoredN', {n: changing.length}));
+  }
+
+  document.getElementById('bbDelete').addEventListener('click', ()=> batchSetDeleted(true));
+  document.getElementById('bbRestore').addEventListener('click', ()=> batchSetDeleted(false));
+  document.getElementById('bbClear').addEventListener('click', ()=> clearSelection());
+
+  document.getElementById('bbInvert').addEventListener('click', ()=>{
+    const targets = placemarks.filter(matchesSearch);
+    targets.forEach(p=> setSelected(p, !selected.has(p.idx)));
+    renderTable();
+    showToast(t('nowSelected', {n: selected.size}));
+  });
+
+  document.getElementById('bbZoom').addEventListener('click', ()=>{
+    const pts = [];
+    selectedPlacemarks().forEach(p=>{
+      if(!p.rings) return;
+      p.rings.forEach(part=> part.forEach(ring=> ring.forEach(pt=> pts.push(pt))));
+    });
+    if(!pts.length){ showToast(t('noGeometry')); return; }
+    setView('map');
+    setTimeout(()=>{ leafletMap.invalidateSize(); leafletMap.fitBounds(pts, {padding:[40,40]}); }, 60);
+  });
+
+  function setView(view){
+    currentView = view;
+    viewMapBtn.classList.toggle('active', view==='map');
+    viewTableBtn.classList.toggle('active', view==='table');
+    mapWrap.style.display = view==='map' ? 'block' : 'none';
+    tableWrap.style.display = view==='table' ? 'block' : 'none';
+    if(view==='map' && leafletMap){
+      setTimeout(()=>{ leafletMap.invalidateSize(); fitMapIfVisible(); }, 50);
+    }
+  }
+
+  viewMapBtn.addEventListener('click', ()=> setView('map'));
+  viewTableBtn.addEventListener('click', ()=> setView('table'));
+
+  // preview columns: name + first few informative fields (rest available in edit panel)
+  let previewKeys = [];
+  function buildColumns(){
+    const keyCount = {};
+    placemarks.forEach(pm=> pm.fields.forEach(f=>{ keyCount[f.key] = (keyCount[f.key]||0)+1; }));
+    // pick keys present in most rows, cap at 6 preview columns
+    previewKeys = Object.keys(keyCount)
+      .sort((a,b)=> keyCount[b]-keyCount[a])
+      .slice(0, 6);
+
+    theadRow.innerHTML = `<th><input type="checkbox" id="selAllChk" title="${escapeHtml(t('selectAllShown'))}"></th>` +
+      `<th>${escapeHtml(t('colName'))}</th>` +
+      previewKeys.map(k=>`<th>${escapeHtml(k)}</th>`).join('') +
+      `<th>${escapeHtml(t('colActions'))}</th>`;
+
+    document.getElementById('selAllChk').addEventListener('click', ()=> selectShownBtn.click());
+  }
+
+  function matchesSearch(pm){
+    if(!searchTerm) return true;
+    const t = searchTerm.toLowerCase();
+    if(pm.name.toLowerCase().includes(t)) return true;
+    if(sources.length > 1 && (pm.sourceName || '').toLowerCase().includes(t)) return true;
+    return pm.fields.some(f=> f.val.toLowerCase().includes(t) || f.key.toLowerCase().includes(t));
+  }
+
+  function renderTable(){
+    tbody.innerHTML = '';
+    shownOrder = [];
+    let shown = 0, modifiedCount = 0, deletedCount = 0;
+    placemarks.forEach(pm=>{
+      if(pm.dirty) modifiedCount++;
+      if(pm.deleted) deletedCount++;
+      if(!matchesSearch(pm)) return;
+      shown++;
+      shownOrder.push(pm.idx);
+      const isSel = selected.has(pm.idx);
+      const tr = document.createElement('tr');
+      tr.className = (pm.deleted?'deleted ':'') + (pm.dirty?'modified ':'') + (isSel?'selected':'');
+      const fieldMap = {};
+      pm.fields.forEach(f=> fieldMap[f.key]=f.val);
+      let rowHtml = `<td><input type="checkbox" data-sel="${pm.idx}" ${isSel?'checked':''}></td>` +
+        `<td>${escapeHtml(pm.name)}</td>`;
+      previewKeys.forEach(k=>{
+        rowHtml += `<td title="${escapeHtml(fieldMap[k]||'')}">${escapeHtml(fieldMap[k]||'')}</td>`;
+      });
+      rowHtml += `<td><div class="row-actions">
+          <button class="icon-btn" data-act="edit" data-idx="${pm.idx}" title="${escapeHtml(t('edit'))}" ${pm.deleted?'disabled':''}>✎</button>
+          <button class="icon-btn danger" data-act="del" data-idx="${pm.idx}" title="${escapeHtml(pm.deleted?t('restore'):t('del'))}">${pm.deleted?'↺':'✕'}</button>
+        </div></td>`;
+      tr.innerHTML = rowHtml;
+      tbody.appendChild(tr);
+    });
+    statTotal.textContent = placemarks.length;
+    statShown.textContent = shown;
+    if(modifiedCount>0){ pillModified.style.display='inline-block'; pillModified.textContent = t('pillModified', {n: modifiedCount}); } else pillModified.style.display='none';
+    if(deletedCount>0){ pillDeleted.style.display='inline-block'; pillDeleted.textContent = t('pillDeleted', {n: deletedCount}); } else pillDeleted.style.display='none';
+    updateSelectionUI();
+  }
+
+  searchInput.addEventListener('input', ()=>{
+    searchTerm = searchInput.value.trim();
+    renderTable();
+    refreshAllMapVisuals();
+  });
+
+  tbody.addEventListener('click', (e)=>{
+    const chk = e.target.closest('input[data-sel]');
+    if(chk){
+      const idx = Number(chk.dataset.sel);
+      const on = chk.checked;
+      if(e.shiftKey && lastAnchorIdx !== null && lastAnchorIdx !== idx){
+        // extend the previous click into a contiguous range over the visible rows
+        const a = shownOrder.indexOf(lastAnchorIdx), b = shownOrder.indexOf(idx);
+        if(a !== -1 && b !== -1){
+          shownOrder.slice(Math.min(a,b), Math.max(a,b)+1).forEach(i=>{
+            const pm = placemarks.find(p=>p.idx===i);
+            if(pm) setSelected(pm, on);
+          });
+        }
+      } else {
+        const pm = placemarks.find(p=>p.idx===idx);
+        if(pm) setSelected(pm, on);
+      }
+      renderTable();
+      lastAnchorIdx = idx;   // set after render: updateSelectionUI clears the anchor when nothing is selected
+      return;
+    }
+    const btn = e.target.closest('button[data-act]');
+    if(!btn) return;
+    const idx = Number(btn.dataset.idx);
+    const pm = placemarks.find(p=>p.idx===idx);
+    if(!pm) return;
+    if(btn.dataset.act === 'edit'){
+      openPanel(pm);
+    } else if(btn.dataset.act === 'del'){
+      pm.deleted = !pm.deleted;
+      renderTable();
+      refreshPlacemarkVisual(pm);
+      showToast(pm.deleted ? t('markedDeleted', {name: pm.name}) : t('restored', {name: pm.name}));
+    }
+  });
+
+  // ---------- Edit panel ----------
+  function openPanel(pm){
+    activeIndex = pm.idx;
+    draftName = pm.name;
+    draftFields = pm.fields.map(f=>({...f}));
+    panelTitle.textContent = t('editPlot', {name: pm.name});
+    renderPanelBody(pm);
+    panel.classList.add('open');
+    overlay.classList.add('open');
+    panel.classList.toggle('has-changes', pm.dirty);
+  }
+
+  function renderPanelBody(pm){
+    panelBody.innerHTML = '';
+    const nameField = document.createElement('div');
+    nameField.className = 'field';
+    nameField.innerHTML = `<label>${escapeHtml(t('fieldName'))}</label><input type="text" data-key="__name__" value="${escapeHtml(draftName)}">`;
+    panelBody.appendChild(nameField);
+
+    draftFields.forEach((f, i)=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'field';
+      const isLong = f.val.length > 40;
+      wrap.innerHTML = `<label>${escapeHtml(f.key)}</label>` +
+        (isLong
+          ? `<textarea rows="2" data-idx="${i}">${escapeHtml(f.val)}</textarea>`
+          : `<input type="text" data-idx="${i}" value="${escapeHtml(f.val)}">`);
+      panelBody.appendChild(wrap);
+    });
+  }
+
+  panelBody.addEventListener('input', (e)=>{
+    const target = e.target;
+    if(target.dataset.key === '__name__'){
+      draftName = target.value;
+    } else if(target.dataset.idx !== undefined){
+      draftFields[Number(target.dataset.idx)].val = target.value;
+    }
+    target.closest('.field').classList.add('changed');
+  });
+
+  function closePanel(){
+    panel.classList.remove('open');
+    activeIndex = null;
+    if(!selPanel.classList.contains('open')) overlay.classList.remove('open');
+  }
+  panelClose.addEventListener('click', closePanel);
+  panelCancel.addEventListener('click', closePanel);
+  overlay.addEventListener('click', ()=>{ closePanel(); closeSelPanel(); });
+
+  panelSave.addEventListener('click', ()=>{
+    const pm = placemarks.find(p=>p.idx===activeIndex);
+    if(!pm) return;
+    const changed = (pm.name !== draftName) ||
+      JSON.stringify(pm.fields) !== JSON.stringify(draftFields);
+    pm.name = draftName;
+    pm.fields = draftFields;
+    if(changed) pm.dirty = true;
+
+    // write straight into the live DOM node so export reflects it
+    if(pm.nameEl){ pm.nameEl.textContent = pm.name; }
+    if(pm.descEl){
+      const newHtml = buildDescriptionHtml(pm.title, pm.fields);
+      // clear existing children, insert fresh CDATA
+      while(pm.descEl.firstChild) pm.descEl.removeChild(pm.descEl.firstChild);
+      pm.descEl.appendChild(xmlDoc.createCDATASection(newHtml));
+    }
+    closePanel();
+    renderTable();
+    refreshPlacemarkVisual(pm);
+    showToast(t('savedEdit', {name: pm.name}));
+  });
+
+  // ---------- Reset all ----------
+  // Drop every loaded file and return to the empty state.
+  function clearWorkspace(){
+    fileInput.value = '';
+    placemarks = [];
+    sources = [];
+    xmlDoc = null;
+    nextIdx = 0;
+    selected.clear();
+    lastAnchorIdx = null;
+    pendingFit = null;
+    updateSelectionUI();
+    setSelectMode(false);
+    setMapTool(null);
+    closeSelPanel();
+    selValues.innerHTML = '';
+    selPasteText.value = '';
+    filesPop.classList.remove('open');
+    filesBtn.style.display = 'none';
+    if(mapLayerGroup) mapLayerGroup.clearLayers();
+    Object.keys(mapLayers).forEach(k=>delete mapLayers[k]);
+    toolbar.style.display = 'none';
+    tableWrap.style.display = 'none';
+    mapWrap.style.display = 'none';
+    emptyState.style.display = 'flex';
+    exportBtn.disabled = true;
+    resetBtn.disabled = true;
+  }
+
+  resetBtn.addEventListener('click', ()=>{
+    if(!confirm(t('confirmReset'))) return;
+    if(!xmlDoc) return;
+    // edits are written straight into the DOM, so the only true undo is a re-read
+    clearWorkspace();
+    showToast(t('reloadOriginal'));
+  });
+
+  // ---------- Language switching ----------
+  function applyI18n(){
+    document.documentElement.lang = lang;
+    document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
+    document.title = t('title');
+    langBtn.textContent = (lang === 'ar') ? 'EN' : 'عربي';
+
+    document.querySelectorAll('[data-i18n]').forEach(el=> el.textContent = t(el.dataset.i18n));
+    document.querySelectorAll('[data-i18n-html]').forEach(el=> el.innerHTML = t(el.dataset.i18nHtml));
+    document.querySelectorAll('[data-i18n-title]').forEach(el=> el.title = t(el.dataset.i18nTitle));
+    document.querySelectorAll('[data-i18n-ph]').forEach(el=> el.placeholder = t(el.dataset.i18nPh));
+
+    // anything rendered from JS has to be rebuilt in the new language
+    setSelectMode(selectMode);
+    if(mapWrap.classList.contains('tiles-down')) offlineNote.textContent = t('tilesBlocked');
+    if(placemarks.length){
+      const keptField = selField.value, keptPaste = selPasteField.value;
+      buildColumns();
+      renderTable();
+      buildMapLegend();
+      renderSourceList();
+      relabelFieldSelectors(keptField, keptPaste);
+      updateFieldHint();
+      updatePasteHint();
+      const pm = placemarks.find(p=>p.idx === activeIndex);
+      if(pm) panelTitle.textContent = t('editPlot', {name: pm.name});
+    } else {
+      updateSelectionUI();
+    }
+  }
+
+  // swap only the two generated option labels, so ticked values survive a language switch
+  function relabelFieldSelectors(keptField, keptPaste){
+    const nameOpt = selField.querySelector(`option[value="${NAME_KEY}"]`);
+    if(nameOpt) nameOpt.textContent = t('fieldName');
+    const pasteNameOpt = selPasteField.querySelector(`option[value="${NAME_KEY}"]`);
+    if(pasteNameOpt) pasteNameOpt.textContent = t('fieldName');
+    const anyOpt = selPasteField.querySelector('option[value=""]');
+    if(anyOpt) anyOpt.textContent = t('matchAnyField');
+    if(keptField) selField.value = keptField;
+    if(keptPaste !== undefined) selPasteField.value = keptPaste;
+    renderValueList();
+  }
+
+  langBtn.addEventListener('click', ()=>{
+    lang = (lang === 'ar') ? 'en' : 'ar';
+    try{ localStorage.setItem('kmzEditorLang', lang); }catch(e){}
+    applyI18n();
+    if(leafletMap && currentView === 'map') setTimeout(()=>leafletMap.invalidateSize(), 60);
+  });
+
+  applyI18n();
+  // reflect the remembered basemap before the map itself is built
+  Array.from(mapBasemaps.querySelectorAll('button')).forEach(b=>
+    b.classList.toggle('active', b.dataset.base === baseKey));
+
+  // ---------- Keyboard shortcuts ----------
+  document.addEventListener('keydown', (e)=>{
+    const t = e.target;
+    const typing = t && (t.tagName === 'INPUT' && t.type !== 'checkbox' || t.tagName === 'TEXTAREA');
+    if(e.key === 'Escape'){
+      if(panel.classList.contains('open')) closePanel();
+      else if(selPanel.classList.contains('open')) closeSelPanel();
+      else if(mapTool) setMapTool(null);
+      else if(selected.size) clearSelection();
+      return;
+    }
+    if(typing || !placemarks.length) return;
+    if((e.key === 'Delete' || e.key === 'Backspace') && selected.size){
+      e.preventDefault();
+      batchSetDeleted(true);
+    } else if((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')){
+      e.preventDefault();
+      selectShownBtn.click();
+    }
+  });
+
+  // ---------- Export ----------
+  exportBtn.addEventListener('click', async ()=>{
+    if(!xmlDoc) return;
+    try{
+      // remove deleted placemarks from the live DOM
+      placemarks.filter(p=>p.deleted).forEach(p=>{
+        if(p.node && p.node.parentNode) p.node.parentNode.removeChild(p.node);
+      });
+      const serializer = new XMLSerializer();
+      let kmlText = serializer.serializeToString(xmlDoc);
+      if(!kmlText.startsWith('<?xml')){
+        kmlText = '<?xml version="1.0" encoding="UTF-8"?>\n' + kmlText;
+      }
+      const zip = new JSZip();
+      zip.file('doc.kml', kmlText);
+      const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = originalFileName + (sources.length > 1 ? '_merged.kmz' : '_edited.kmz');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast(t('exported'));
+      // remove deleted rows from our in-memory list and map, since nodes are gone
+      placemarks.filter(p=>p.deleted).forEach(p=>{
+        const layer = mapLayers[p.idx];
+        if(layer){ mapLayerGroup.removeLayer(layer); delete mapLayers[p.idx]; }
+        selected.delete(p.idx);
+      });
+      placemarks = placemarks.filter(p=>!p.deleted);
+      renderTable();
+      renderSourceList();
+    }catch(err){
+      console.error(err);
+      showToast(t('exportError', {msg: err.message}));
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
