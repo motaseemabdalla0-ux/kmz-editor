@@ -1172,6 +1172,44 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     .km-rail-left{display:none;}
     .km-kpis{grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); padding:9px 12px;}
   }
+
+  /* ---- geo tools ---- */
+  .km-meas-hud{
+    position:absolute; bottom:74px; inset-inline-start:12px; z-index:430;
+    display:none; min-width:180px; padding:10px 12px;
+    background:var(--glass); backdrop-filter:blur(var(--blur));
+    -webkit-backdrop-filter:blur(var(--blur));
+    border:1px solid var(--gold); border-radius:var(--radius);
+    box-shadow:var(--shadow-2); color:var(--text); font-size:11.5px; line-height:1.8;
+    font-variant-numeric:tabular-nums;
+  }
+  .km-meas-hud.show{display:block;}
+  .km-meas-hud b{color:var(--gold);}
+  .km-meas-hud button{
+    flex:1; background:rgba(255,255,255,.06); border:1px solid var(--hairline);
+    color:var(--text-2); border-radius:6px; font-size:10.5px; padding:4px 8px;
+    cursor:pointer; font-family:var(--sans);
+  }
+  .km-meas-hud button:hover{border-color:var(--gold); color:var(--gold);}
+  .km-mini{
+    position:absolute; bottom:12px; inset-inline-end:12px; z-index:410;
+    width:180px; height:130px; display:none;
+    border:1px solid var(--hairline); border-radius:var(--radius);
+    overflow:hidden; box-shadow:var(--shadow-2);
+  }
+  .km-mini > div{width:100%; height:100%; background:var(--bg-2);}
+  .km-label{
+    background:rgba(11,18,32,.82) !important; border:1px solid var(--hairline) !important;
+    color:var(--text) !important; font-family:var(--sans); font-size:10px; font-weight:600;
+    box-shadow:none !important; border-radius:5px; padding:1px 5px;
+  }
+  .km-label::before{display:none !important;}
+  .km-cluster span{
+    display:grid; place-items:center; border-radius:99px;
+    background:rgba(200,155,60,.9); color:#141005;
+    font-family:var(--sans); font-weight:800; font-size:11px;
+    border:2px solid rgba(11,18,32,.75); box-shadow:var(--shadow-1);
+  }
 </style>
 </head>
 <body>
@@ -1280,11 +1318,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     <button data-tool="rect" data-icon="rect" data-i18n="toolRect" data-i18n-title="toolRectTip"></button>
     <button data-tool="lasso" data-icon="lasso" data-i18n="toolLasso" data-i18n-title="toolLassoTip"></button>
     <button data-tool="brush" data-icon="brush" data-i18n="toolBrush" data-i18n-title="toolBrushTip"></button>
+    <button data-tool="measure" data-icon="ruler" data-i18n="toolMeasure" data-i18n-title="toolMeasureTip"></button>
   </div>
   <div class="map-tools map-basemaps" id="mapBasemaps">
     <button data-base="streets" class="active" data-icon="map" data-i18n="baseStreets" data-i18n-title="baseStreetsTip"></button>
     <button data-base="satellite" data-icon="satellite" data-i18n="baseSatellite" data-i18n-title="baseSatelliteTip"></button>
     <button data-base="hybrid" data-icon="layers" data-i18n="baseHybrid" data-i18n-title="baseHybridTip"></button>
+  </div>
+  <div class="km-mapctl" id="kmMapCtl">
+    <button id="kmCompass" class="km-compass" title="north"></button>
+    <button id="kmLocate" title="fit"></button>
+    <button id="kmMiniToggle" title="minimap"></button>
+    <button id="kmLabelToggle" title="labels">A</button>
   </div>
   <div class="map-tools map-fillmode" id="mapFillMode">
     <button data-fill="filled" data-icon="fill" data-i18n="fillFilled" data-i18n-title="fillFilledTip"></button>
@@ -1292,6 +1337,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   </div>
   
   <div class="map-offline" id="offlineNote"></div>
+  <div class="km-meas-hud" id="kmMeasHud"></div>
+  <div class="km-mini" id="kmMini"><div id="kmMiniMap"></div></div>
   <div class="empty" id="emptyState">
     <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
       <path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>
@@ -1411,6 +1458,52 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       </select>
       <div class="stats-grid" id="tbStatsOut"></div>
       <button class="btn btn-outline" id="tbStatsRun" data-icon="stats" data-i18n="tbStatsRun"></button>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="tbSqlTitle"></h3>
+      <div class="sel-hint" data-i18n="tbSqlNote"></div>
+      <input type="text" id="tbSql" data-i18n-ph="tbSqlPh">
+      <div class="sel-hint" id="tbSqlOut"></div>
+      <button class="btn btn-gold" id="tbSqlRun" data-icon="search" data-i18n="tbSqlRun"></button>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="tbJoinTitle"></h3>
+      <div class="sel-hint" data-i18n="tbJoinNote"></div>
+      <select id="tbJoinSrc"></select>
+      <select id="tbJoinTgt"></select>
+      <select id="tbJoinField"></select>
+      <div class="sel-hint" id="tbJoinOut"></div>
+      <button class="btn btn-gold" id="tbJoinRun" data-icon="merge" data-i18n="tbJoinRun"></button>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="tbBufferTitle"></h3>
+      <div class="sel-hint" data-i18n="tbBufferNote"></div>
+      <input type="text" id="tbBufferM" value="50">
+      <div class="mini-row">
+        <button class="mini-btn" id="tbBufferRun" data-i18n="tbBufferRun"></button>
+        <button class="mini-btn" id="tbBufferClear" data-i18n="tbBufferClear"></button>
+      </div>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="tbVizTitle"></h3>
+      <div class="sel-hint" data-i18n="tbVizNote"></div>
+      <div class="mini-row">
+        <button class="mini-btn" id="tbHeat" data-i18n="tbHeat"></button>
+        <button class="mini-btn" id="tbCluster" data-i18n="tbCluster"></button>
+      </div>
+      <div class="sel-hint" id="tbVizOut"></div>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="tbBmTitle"></h3>
+      <div class="mini-row">
+        <button class="mini-btn" id="tbBmAdd" data-i18n="tbBmAdd"></button>
+      </div>
+      <div class="val-list" id="kmBookmarkList"></div>
     </div>
 
     <div class="sel-sec">
@@ -1628,6 +1721,61 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       mergedInto:'تم دمج {n} قطعة في «{name}»',
       sortTip:'اضغط للترتيب حسب هذا العمود',
       tagline:'منصة الذكاء الجغرافي',
+      toolMeasure:'قياس',
+      toolMeasureTip:'اضغط لإضافة نقاط — أعد الضغط على الزر لتبديل مسافة/مساحة/زاوية',
+      measHint:'القياس: اضغط على الخريطة لإضافة نقاط',
+      measMode:'وضع القياس: {mode}',
+      measMode_distance:'مسافة',
+      measMode_area:'مساحة',
+      measMode_angle:'زاوية',
+      measTotal:'المسافة الكلية:',
+      measSegment:'آخر قطعة:',
+      measBearing:'الاتجاه:',
+      measArea:'المساحة:',
+      measPerimeter:'المحيط:',
+      measVertices:'عدد النقاط:',
+      measAngle:'الزاوية:',
+      measAngleHint:'أضف ثلاث نقاط لقياس الزاوية',
+      measUndo:'تراجع',
+      measClear:'مسح',
+      viewReset:'أُعيد ضبط العرض على العلا',
+      labelsOn:'التسميات مفعّلة ({field})',
+      labelsOff:'أُخفيت التسميات',
+      tbSqlTitle:'فلتر SQL',
+      tbSqlNote:'مثال: "Area (m2)" > 4000 AND District = North Sector',
+      tbSqlPh:'"الحقل" > قيمة AND ...',
+      tbSqlRun:'نفّذ الاستعلام وحدّد',
+      tbSqlEmpty:'اكتب استعلاماً أولاً',
+      tbSqlHits:'طابق <b>{n}</b> قطعة — تم تحديدها',
+      tbSqlBad:'تعذّر تحليل: «{part}»',
+      tbJoinTitle:'ربط مكاني',
+      tbJoinNote:'ينقل قيمة حقل من طبقة المصدر إلى القطع التي يقع مركزها داخلها.',
+      tbJoinRun:'نفّذ الربط',
+      tbJoinSame:'اختر طبقتين مختلفتين',
+      tbJoinOut:'{matched} من {total} قطعة تطابقت مكانياً — تحدَّث حقل «{field}» فعلياً في <b>{changed}</b> منها',
+      tbJoinToast:'ربط مكاني: {matched} تطابق، {changed} تحديث فعلي',
+      opSpatialJoin:'ربط مكاني لـ {n} قطعة',
+      tbBufferTitle:'نطاق حماية (Buffer)',
+      tbBufferNote:'يرسم نطاقاً حول القطع المحددة (أو كل المعروض) بالأمتار.',
+      tbBufferRun:'ارسم النطاق',
+      tbBufferClear:'امسح',
+      tbBufferBad:'أدخل مسافة صحيحة',
+      tbBufferDone:'نطاق {m} م حول {n} شكل',
+      tbBufferCleared:'مُسح النطاق',
+      tbVizTitle:'تصور كثافة',
+      tbVizNote:'خريطة حرارية أو تجميع للقطع حسب الكثافة.',
+      tbHeat:'خريطة حرارية',
+      tbCluster:'تجميع',
+      tbVizOff:'—',
+      tbHeatOn:'خريطة حرارية لـ <b>{n}</b> قطعة',
+      tbClusterOn:'<b>{n}</b> مجموعة',
+      clusterSelected:'تم تحديد {n} قطعة من المجموعة',
+      tbBmTitle:'العلامات المرجعية',
+      tbBmAdd:'احفظ العرض الحالي',
+      bmPrompt:'اسم العلامة:',
+      bmDefault:'عرض {n}',
+      bmSaved:'حُفظت العلامة',
+      bmEmpty:'لا توجد علامات محفوظة',
       collapse:'طيّ القائمة',
       nav_dashboard:'الرئيسية',
       nav_map:'الخريطة',
@@ -1832,6 +1980,61 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       mergedInto:'Merged {n} plots into \"{name}\"',
       sortTip:'Click to sort by this column',
       tagline:'Geospatial Intelligence',
+      toolMeasure:'Measure',
+      toolMeasureTip:'Click to add points — press again to cycle distance/area/angle',
+      measHint:'Measure: click the map to add points',
+      measMode:'Measure mode: {mode}',
+      measMode_distance:'distance',
+      measMode_area:'area',
+      measMode_angle:'angle',
+      measTotal:'Total distance:',
+      measSegment:'Last segment:',
+      measBearing:'Bearing:',
+      measArea:'Area:',
+      measPerimeter:'Perimeter:',
+      measVertices:'Vertices:',
+      measAngle:'Angle:',
+      measAngleHint:'Add three points to measure an angle',
+      measUndo:'Undo',
+      measClear:'Clear',
+      viewReset:'View reset to AlUla',
+      labelsOn:'Labels on ({field})',
+      labelsOff:'Labels hidden',
+      tbSqlTitle:'SQL filter',
+      tbSqlNote:'e.g. "Area (m2)" > 4000 AND District = North Sector',
+      tbSqlPh:'"field" > value AND ...',
+      tbSqlRun:'Run query and select',
+      tbSqlEmpty:'Enter a query first',
+      tbSqlHits:'Matched <b>{n}</b> plots — selected',
+      tbSqlBad:'Could not parse: "{part}"',
+      tbJoinTitle:'Spatial join',
+      tbJoinNote:'Copies a field from the source layer onto plots whose centroid falls inside it.',
+      tbJoinRun:'Run join',
+      tbJoinSame:'Pick two different layers',
+      tbJoinOut:'{matched} of {total} plots matched spatially — field "{field}" actually updated on <b>{changed}</b>',
+      tbJoinToast:'Spatial join: {matched} matched, {changed} updated',
+      opSpatialJoin:'spatial join on {n} plots',
+      tbBufferTitle:'Buffer',
+      tbBufferNote:'Draws a buffer around the selected plots (or everything visible), in metres.',
+      tbBufferRun:'Draw buffer',
+      tbBufferClear:'Clear',
+      tbBufferBad:'Enter a valid distance',
+      tbBufferDone:'{m} m buffer around {n} shapes',
+      tbBufferCleared:'Buffer cleared',
+      tbVizTitle:'Density visualisation',
+      tbVizNote:'Heatmap or clustering of plot density.',
+      tbHeat:'Heatmap',
+      tbCluster:'Cluster',
+      tbVizOff:'—',
+      tbHeatOn:'Heatmap over <b>{n}</b> plots',
+      tbClusterOn:'<b>{n}</b> clusters',
+      clusterSelected:'Selected {n} plots in the cluster',
+      tbBmTitle:'Bookmarks',
+      tbBmAdd:'Save current view',
+      bmPrompt:'Bookmark name:',
+      bmDefault:'View {n}',
+      bmSaved:'Bookmark saved',
+      bmEmpty:'No bookmarks yet',
       collapse:'Collapse',
       nav_dashboard:'Dashboard',
       nav_map:'Map',
@@ -2607,7 +2810,7 @@ ${inner}</table>
       if(!oe || oe.button !== 0) return;
       // Shift always means rectangle, whatever tool is armed
       mode = oe.shiftKey ? 'rect' : (mapTool || null);
-      if(!mode) return;
+      if(!mode || mode === 'measure') return;
       additive = !oe.altKey;              // Alt inverts the gesture into a deselect
       origin = current = e.latlng;
       map.dragging.disable();
@@ -2694,6 +2897,7 @@ ${inner}</table>
       announceDrag(changed, additive);
     }
 
+    map.on('click', (e)=>{ if(mapTool === 'measure'){ L.DomEvent.stop(e.originalEvent); measureClick(e.latlng); } });
     map.on('mousedown', begin);
     map.on('mousemove', move);
     map.on('mouseup', finish);
@@ -2716,8 +2920,9 @@ ${inner}</table>
     if(!btn) return;
     const tool = btn.dataset.tool || null;
     setMapTool(mapTool === tool ? null : tool);
+    if(mapTool !== 'measure') clearMeasure();
     if(mapTool){
-      showToast(mapTool === 'brush' ? t('brushTip') : t('drawTip'));
+      showToast(mapTool === 'measure' ? t('measHint') : mapTool === 'brush' ? t('brushTip') : t('drawTip'));
     }
   });
 
@@ -4448,6 +4653,555 @@ ${inner}</table>
     if(!inspected || !placemarks.includes(inspected)) showFeature(null);
   }
 
+
+
+  // ================= KEYMAP geospatial toolkit (no external libraries) =================
+  const EARTH_R = 6371008.8;                     // IUGG mean radius, metres
+  const rad = d => d * Math.PI / 180;
+  const deg = r => r * 180 / Math.PI;
+
+  // great-circle distance between [lat,lng] pairs, metres
+  function haversine(a, b){
+    const dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
+    const s = Math.sin(dLat/2)**2 +
+              Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng/2)**2;
+    return 2 * EARTH_R * Math.asin(Math.min(1, Math.sqrt(s)));
+  }
+
+  // spherical excess area of a closed ring of [lat,lng], square metres
+  function ringAreaM2(ring){
+    if(!ring || ring.length < 3) return 0;
+    let total = 0;
+    for(let i = 0; i < ring.length; i++){
+      const p1 = ring[i], p2 = ring[(i + 1) % ring.length];
+      total += rad(p2[1] - p1[1]) * (2 + Math.sin(rad(p1[0])) + Math.sin(rad(p2[0])));
+    }
+    return Math.abs(total * EARTH_R * EARTH_R / 2);
+  }
+
+  // a placemark's true area: outer rings minus holes
+  function placemarkAreaM2(pm){
+    if(!pm.rings) return 0;
+    let a = 0;
+    pm.rings.forEach(part=>{
+      a += ringAreaM2(part[0]);
+      for(let h = 1; h < part.length; h++) a -= ringAreaM2(part[h]);
+    });
+    return Math.max(0, a);
+  }
+
+  function ringPerimeterM(ring){
+    let p = 0;
+    for(let i = 0; i < ring.length - 1; i++) p += haversine(ring[i], ring[i+1]);
+    return p;
+  }
+
+  function placemarkCentroid(pm){
+    if(!pm.rings) return null;
+    // area-weighted centroid of the outer rings
+    let cx = 0, cy = 0, wsum = 0;
+    pm.rings.forEach(part=>{
+      const ring = part[0], w = ringAreaM2(ring) || 1;
+      let sx = 0, sy = 0;
+      ring.forEach(p=>{ sy += p[0]; sx += p[1]; });
+      cy += (sy / ring.length) * w; cx += (sx / ring.length) * w; wsum += w;
+    });
+    return wsum ? [cy / wsum, cx / wsum] : null;
+  }
+
+  // initial bearing a->b in degrees (0 = north)
+  function bearingDeg(a, b){
+    const y = Math.sin(rad(b[1]-a[1])) * Math.cos(rad(b[0]));
+    const x = Math.cos(rad(a[0]))*Math.sin(rad(b[0])) -
+              Math.sin(rad(a[0]))*Math.cos(rad(b[0]))*Math.cos(rad(b[1]-a[1]));
+    return (deg(Math.atan2(y, x)) + 360) % 360;
+  }
+
+  // interior angle at b for the path a-b-c, degrees
+  function angleAt(a, b, c){
+    let d = Math.abs(bearingDeg(b, a) - bearingDeg(b, c));
+    if(d > 180) d = 360 - d;
+    return d;
+  }
+
+  function fmtDist(m){
+    return m >= 1000 ? (m/1000).toFixed(2) + ' km' : m.toFixed(1) + ' m';
+  }
+  function fmtArea(m2){
+    if(m2 >= 1e6) return (m2/1e6).toFixed(3) + ' km²';
+    if(m2 >= 10000) return (m2/10000).toFixed(2) + ' ha';
+    return m2.toFixed(1) + ' m²';
+  }
+
+  // ---------- Measure tool ----------
+  let measurePts = [], measureLayers = [], measureMode = 'distance';
+
+  function clearMeasure(){
+    measureLayers.forEach(l=> leafletMap.removeLayer(l));
+    measureLayers = []; measurePts = [];
+    measureHud.classList.remove('show');
+  }
+
+  function redrawMeasure(){
+    measureLayers.forEach(l=> leafletMap.removeLayer(l));
+    measureLayers = [];
+    if(!measurePts.length) return;
+    const style = {color:'#C89B3C', weight:2, dashArray:'6,4', fillColor:'#C89B3C', fillOpacity:.12};
+    if(measureMode === 'area' && measurePts.length >= 3){
+      measureLayers.push(L.polygon(measurePts, style).addTo(leafletMap));
+    } else if(measurePts.length >= 2){
+      measureLayers.push(L.polyline(measurePts, style).addTo(leafletMap));
+    }
+    measurePts.forEach(p=> measureLayers.push(
+      L.circleMarker(p, {radius:4, color:'#C89B3C', fillColor:'#0B1220', fillOpacity:1, weight:2}).addTo(leafletMap)));
+
+    let html = '';
+    if(measureMode === 'distance'){
+      let total = 0;
+      for(let i = 0; i < measurePts.length - 1; i++) total += haversine(measurePts[i], measurePts[i+1]);
+      const last = measurePts.length >= 2
+        ? haversine(measurePts[measurePts.length-2], measurePts[measurePts.length-1]) : 0;
+      html = `<b>${escapeHtml(t('measTotal'))}</b> ${fmtDist(total)}` +
+             (last ? `<br>${escapeHtml(t('measSegment'))} ${fmtDist(last)}` : '') +
+             (measurePts.length >= 2
+               ? `<br>${escapeHtml(t('measBearing'))} ${bearingDeg(measurePts[measurePts.length-2], measurePts[measurePts.length-1]).toFixed(1)}°`
+               : '');
+    } else if(measureMode === 'area'){
+      const ring = measurePts.slice();
+      const a = ring.length >= 3 ? ringAreaM2(ring) : 0;
+      const per = ring.length >= 2 ? ringPerimeterM(ring.concat([ring[0]])) : 0;
+      html = `<b>${escapeHtml(t('measArea'))}</b> ${fmtArea(a)}` +
+             `<br>${escapeHtml(t('measPerimeter'))} ${fmtDist(per)}` +
+             `<br>${escapeHtml(t('measVertices'))} ${ring.length}`;
+    } else {
+      html = measurePts.length >= 3
+        ? `<b>${escapeHtml(t('measAngle'))}</b> ${angleAt(measurePts[measurePts.length-3], measurePts[measurePts.length-2], measurePts[measurePts.length-1]).toFixed(1)}°`
+        : escapeHtml(t('measAngleHint'));
+    }
+    measureHud.innerHTML = html +
+      `<div style="margin-top:7px; display:flex; gap:5px;">
+         <button data-meas="undo">${escapeHtml(t('measUndo'))}</button>
+         <button data-meas="clear">${escapeHtml(t('measClear'))}</button>
+       </div>`;
+    measureHud.classList.add('show');
+  }
+
+  function measureClick(latlng){
+    measurePts.push([latlng.lat, latlng.lng]);
+    redrawMeasure();
+  }
+
+  // ---------- Dynamic labels ----------
+  let labelsOn = false, labelField = null;
+  function applyLabels(){
+    placemarks.forEach(pm=>{
+      const layer = mapLayers[pm.idx];
+      if(!layer) return;
+      if(!labelsOn){ if(layer.getTooltip()) layer.unbindTooltip(); return; }
+      if(!plotVisible(pm)){ if(layer.getTooltip()) layer.unbindTooltip(); return; }
+      const text = labelField ? String(fieldValueOf(pm, labelField)) : pm.name;
+      if(layer.getTooltip()) layer.unbindTooltip();
+      if(text) layer.bindTooltip(text, {permanent:true, direction:'center', className:'km-label'});
+    });
+  }
+
+  // ---------- Mini map ----------
+  let miniMap = null, miniRect = null;
+  function toggleMiniMap(on){
+    const host = document.getElementById('kmMini');
+    host.style.display = on ? 'block' : 'none';
+    if(!on){ return; }
+    if(!miniMap){
+      miniMap = L.map('kmMiniMap', {
+        zoomControl:false, attributionControl:false, dragging:false,
+        scrollWheelZoom:false, doubleClickZoom:false, boxZoom:false, keyboard:false
+      });
+      L.tileLayer(OSM_URL, {maxZoom:19}).addTo(miniMap);
+      miniRect = L.rectangle(leafletMap.getBounds(),
+        {color:'#C89B3C', weight:1.5, fillOpacity:.08}).addTo(miniMap);
+      const sync = ()=>{
+        if(!miniMap) return;
+        miniMap.setView(leafletMap.getCenter(), Math.max(0, leafletMap.getZoom() - 4), {animate:false});
+        miniRect.setBounds(leafletMap.getBounds());
+      };
+      leafletMap.on('move zoom', sync);
+      sync();
+    }
+    setTimeout(()=>{ miniMap.invalidateSize(); miniMap.setView(leafletMap.getCenter(), Math.max(0, leafletMap.getZoom()-4)); }, 60);
+  }
+
+  // ---------- Bookmarks ----------
+  let bookmarks = [];
+  try{ bookmarks = JSON.parse(localStorage.getItem('keymapBookmarks') || '[]'); }catch(e){}
+  function saveBookmarks(){ try{ localStorage.setItem('keymapBookmarks', JSON.stringify(bookmarks)); }catch(e){} }
+  function renderBookmarks(){
+    const host = document.getElementById('kmBookmarkList');
+    if(!host) return;
+    host.innerHTML = bookmarks.length ? bookmarks.map((b,i)=>`
+      <div class="lg-row" data-bm="${i}">
+        <span class="lg-name">${escapeHtml(b.name)}</span>
+        <span class="lg-count">z${b.zoom}</span>
+        <button class="lg-pick" data-bmgo="${i}">${svgIcon('target')}</button>
+        <button class="lg-pick" data-bmdel="${i}">${svgIcon('trash')}</button>
+      </div>`).join('') : `<div class="km-feat-empty">${escapeHtml(t('bmEmpty'))}</div>`;
+  }
+
+  // ---------- Spatial join ----------
+  function spatialJoin(sourceId, targetId, field){
+    const src = placemarks.filter(p=>p.sourceId === sourceId);
+    const tgt = placemarks.filter(p=>p.sourceId === targetId);
+    const items = [];
+    let matched = 0;      // target plots whose centroid falls inside a source plot
+    let changed = 0;      // of those, how many actually got a new value written
+    tgt.forEach(pm=>{
+      const c = placemarkCentroid(pm);
+      if(!c) return;
+      const host = src.find(s=>{
+        const layer = mapLayers[s.idx];
+        return layer && layer.getBounds().contains(L.latLng(c[0], c[1])) &&
+               pointInPlacemark(s, c[0], c[1]);
+      });
+      if(!host) return;
+      matched++;
+      const val = String(fieldValueOf(host, field));
+      const existing = pm.fields.find(f=>f.key === field);
+      if(existing && existing.val === val) return;   // spatially matched, nothing to update
+      const before = snapshotAttrs(pm);
+      if(existing) existing.val = val;
+      else pm.fields.push({key: field, val});
+      pm.dirty = true;
+      writePlacemarkToDom(pm);
+      items.push({pm, before, after: snapshotAttrs(pm)});
+      changed++;
+    });
+    if(items.length) pushAttrChange(items, t('opSpatialJoin', {n: items.length}));
+    return {matched, changed, target: tgt.length};
+  }
+
+  // ---------- Buffer ----------
+  // offsets every outer-ring vertex outward along the angle bisector
+  let bufferLayer = null;
+  function buildBuffer(list, metres){
+    if(bufferLayer){ leafletMap.removeLayer(bufferLayer); bufferLayer = null; }
+    const shapes = [];
+    list.forEach(pm=>{
+      if(!pm.rings) return;
+      const c = placemarkCentroid(pm);
+      if(!c) return;
+      const mPerDegLat = 111132.0;
+      const mPerDegLng = 111320.0 * Math.cos(rad(c[0])) || 1;
+      pm.rings.forEach(part=>{
+        const ring = part[0];
+        const out = ring.map(p=>{
+          const dy = p[0] - c[0], dx = p[1] - c[1];
+          const len = Math.hypot(dy * mPerDegLat, dx * mPerDegLng) || 1;
+          return [p[0] + (dy * mPerDegLat / len) * metres / mPerDegLat,
+                  p[1] + (dx * mPerDegLng / len) * metres / mPerDegLng];
+        });
+        shapes.push(out);
+      });
+    });
+    if(!shapes.length) return 0;
+    bufferLayer = L.polygon(shapes, {
+      color:'#4C9AFF', weight:1.5, fillColor:'#4C9AFF', fillOpacity:.15, dashArray:'5,4', interactive:false
+    }).addTo(leafletMap);
+    bufferLayer.bringToBack();
+    return shapes.length;
+  }
+
+  // ---------- Heatmap ----------
+  let heatLayer = null;
+  function buildHeatmap(on){
+    if(heatLayer){ leafletMap.removeLayer(heatLayer); heatLayer = null; }
+    if(!on) return 0;
+    const pts = [];
+    activePlacemarks().forEach(pm=>{ const c = placemarkCentroid(pm); if(c) pts.push(c); });
+    if(!pts.length) return 0;
+    const Heat = L.Layer.extend({
+      onAdd(map){
+        this._c = L.DomUtil.create('canvas', 'leaflet-zoom-animated');
+        const size = map.getSize();
+        this._c.width = size.x; this._c.height = size.y;
+        map.getPanes().overlayPane.appendChild(this._c);
+        this._c.style.pointerEvents = 'none';
+        map.on('moveend zoomend resize', this._draw, this);
+        this._draw();
+      },
+      onRemove(map){
+        map.off('moveend zoomend resize', this._draw, this);
+        if(this._c && this._c.parentNode) this._c.parentNode.removeChild(this._c);
+      },
+      _draw(){
+        const map = this._map, size = map.getSize();
+        const tl = map.containerPointToLayerPoint([0, 0]);
+        L.DomUtil.setPosition(this._c, tl);
+        this._c.width = size.x; this._c.height = size.y;
+        const ctx = this._c.getContext('2d');
+        ctx.clearRect(0, 0, size.x, size.y);
+        const r = 26;
+        pts.forEach(p=>{
+          const q = map.latLngToContainerPoint(L.latLng(p[0], p[1]));
+          if(q.x < -r || q.y < -r || q.x > size.x + r || q.y > size.y + r) return;
+          const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, r);
+          g.addColorStop(0, 'rgba(200,155,60,.55)');
+          g.addColorStop(.5, 'rgba(224,101,91,.28)');
+          g.addColorStop(1, 'rgba(11,18,32,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2); ctx.fill();
+        });
+      }
+    });
+    heatLayer = new Heat();
+    leafletMap.addLayer(heatLayer);
+    return pts.length;
+  }
+
+  // ---------- Clustering ----------
+  let clusterLayer = null;
+  function buildClusters(on){
+    if(clusterLayer){ leafletMap.removeLayer(clusterLayer); clusterLayer = null; }
+    if(!on) return 0;
+    const cell = 0.01;   // ~1.1 km grid
+    const bins = new Map();
+    activePlacemarks().forEach(pm=>{
+      const c = placemarkCentroid(pm);
+      if(!c) return;
+      const key = Math.round(c[0]/cell) + ':' + Math.round(c[1]/cell);
+      if(!bins.has(key)) bins.set(key, {lat:0, lng:0, n:0, ids:[]});
+      const b = bins.get(key);
+      b.lat += c[0]; b.lng += c[1]; b.n++; b.ids.push(pm.idx);
+    });
+    clusterLayer = L.layerGroup();
+    bins.forEach(b=>{
+      const size = Math.min(46, 22 + Math.log2(b.n + 1) * 5);
+      const m = L.marker([b.lat/b.n, b.lng/b.n], {icon: L.divIcon({
+        className:'km-cluster', iconSize:[size, size],
+        html:`<span style="width:${size}px;height:${size}px">${b.n}</span>`
+      })});
+      m.on('click', ()=>{
+        const prev = selectedPlacemarks(); selected.clear(); prev.forEach(refreshPlacemarkVisual);
+        b.ids.forEach(id=>{ const pm = placemarks.find(p=>p.idx === id); if(pm) setSelected(pm, true); });
+        renderTable();
+        showToast(t('clusterSelected', {n: b.n}));
+      });
+      clusterLayer.addLayer(m);
+    });
+    clusterLayer.addTo(leafletMap);
+    return bins.size;
+  }
+
+  // ---------- SQL-style filter ----------
+  // FIELD OP VALUE [AND|OR ...]   field names may be "quoted"
+  function parseSql(expr){
+    const tokens = expr.split(/\s+(AND|OR|و|أو)\s+/i);
+    const clauses = []; const joiners = [];
+    for(let i = 0; i < tokens.length; i++){
+      if(i % 2 === 1){ joiners.push(/^(or|أو)$/i.test(tokens[i]) ? 'OR' : 'AND'); continue; }
+      const m = tokens[i].trim().match(/^(?:"([^"]+)"|'([^']+)'|([^\s><=!]+))\s*(>=|<=|!=|<>|=|>|<|LIKE|NOT LIKE)\s*(.+)$/i);
+      if(!m) throw new Error(tokens[i].trim());
+      const field = (m[1] || m[2] || m[3]).trim();
+      const op = m[4].toUpperCase();
+      let val = m[5].trim().replace(/^["']|["']$/g, '');
+      clauses.push({field, op, val});
+    }
+    return {clauses, joiners};
+  }
+
+  function evalClause(pm, c){
+    const raw = fieldValueOf(pm, c.field === '*' ? NAME_KEY : c.field);
+    const a = String(raw).trim();
+    const an = parseFloat(a.replace(/,/g, '')), bn = parseFloat(c.val.replace(/,/g, ''));
+    const numeric = !isNaN(an) && !isNaN(bn);
+    switch(c.op){
+      case '=':  return numeric ? an === bn : a.toLowerCase() === c.val.toLowerCase();
+      case '!=': case '<>': return numeric ? an !== bn : a.toLowerCase() !== c.val.toLowerCase();
+      case '>':  return numeric ? an >  bn : a >  c.val;
+      case '<':  return numeric ? an <  bn : a <  c.val;
+      case '>=': return numeric ? an >= bn : a >= c.val;
+      case '<=': return numeric ? an <= bn : a <= c.val;
+      case 'LIKE': return a.toLowerCase().includes(c.val.toLowerCase().replace(/%/g, ''));
+      case 'NOT LIKE': return !a.toLowerCase().includes(c.val.toLowerCase().replace(/%/g, ''));
+    }
+    return false;
+  }
+
+  function runSql(expr){
+    const {clauses, joiners} = parseSql(expr);
+    return activePlacemarks().filter(pm=>{
+      let acc = evalClause(pm, clauses[0]);
+      for(let i = 1; i < clauses.length; i++){
+        const v = evalClause(pm, clauses[i]);
+        acc = joiners[i-1] === 'OR' ? (acc || v) : (acc && v);
+      }
+      return acc;
+    });
+  }
+
+
+  // ---------- geo tool UI wiring ----------
+  const measureHud = document.getElementById('kmMeasHud');
+  Object.assign(ICONS, {
+    ruler:'<path d="M15.5 3.5 20.5 8.5 8.5 20.5 3.5 15.5z"/><path d="M8 11l1.6 1.6M11 8l1.6 1.6M5.8 13.2l1.6 1.6M13.2 5.8l1.6 1.6"/>'
+  });
+
+  measureHud.addEventListener('click', (e)=>{
+    const b = e.target.closest('button[data-meas]');
+    if(!b) return;
+    if(b.dataset.meas === 'undo'){ measurePts.pop(); redrawMeasure(); }
+    else clearMeasure();
+  });
+
+  // cycle distance -> area -> angle each time the measure tool is re-picked.
+  // Registered on the CAPTURE phase so it reads `mapTool` before the existing
+  // bubble-phase toggle handler (bound earlier, in the base script) flips it —
+  // otherwise this always sees mapTool already set to 'measure' and thinks it
+  // was re-picked. When it IS a re-pick, stopPropagation keeps that bubble
+  // handler from running at all — it would otherwise read the still-current
+  // mapTool==='measure' and treat the click as "turn the tool off", instead of
+  // "same tool, next mode". Turning measure off happens by picking a different
+  // tool, not by re-clicking this one — see the tooltip text.
+  const MEAS_MODES = ['distance','area','angle'];
+  mapTools.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-tool="measure"]');
+    if(!btn) return;
+    const wasAlreadyMeasuring = mapTool === 'measure';
+    if(wasAlreadyMeasuring){
+      measureMode = MEAS_MODES[(MEAS_MODES.indexOf(measureMode) + 1) % 3];
+      clearMeasure();
+      showToast(t('measMode', {mode: t('measMode_' + measureMode)}));
+      e.stopPropagation();
+    } else {
+      measureMode = 'distance';
+    }
+  }, true);
+
+  // right-edge map controls
+  document.getElementById('kmCompass').innerHTML = svgIcon('compass');
+  document.getElementById('kmLocate').innerHTML = svgIcon('locate');
+  document.getElementById('kmMiniToggle').innerHTML = svgIcon('map');
+  document.getElementById('kmCompass').addEventListener('click', ()=>{
+    leafletMap.setView(ALULA_VIEW.center, ALULA_VIEW.zoom);
+    showToast(t('viewReset'));
+  });
+  document.getElementById('kmLocate').addEventListener('click', ()=>{
+    const pts = [];
+    activePlacemarks().forEach(pm=>{ if(pm.rings) pm.rings.forEach(part=> part.forEach(r=> r.forEach(p=> pts.push(p)))); });
+    if(!pts.length){ showToast(t('noGeometry')); return; }
+    leafletMap.fitBounds(pts, {padding:[50,50]});
+  });
+  let miniOn = false;
+  document.getElementById('kmMiniToggle').addEventListener('click', (e)=>{
+    miniOn = !miniOn; toggleMiniMap(miniOn);
+    e.currentTarget.style.color = miniOn ? 'var(--gold)' : '';
+  });
+  document.getElementById('kmLabelToggle').addEventListener('click', (e)=>{
+    labelsOn = !labelsOn;
+    if(labelsOn && !labelField){
+      const keys = allFieldKeys();
+      labelField = keys.find(k=>/plot\s*id|parcel|name|رقم/i.test(k)) || NAME_KEY;
+    }
+    applyLabels();
+    e.currentTarget.style.color = labelsOn ? 'var(--gold)' : '';
+    showToast(labelsOn ? t('labelsOn', {field: labelField === NAME_KEY ? t('fieldName') : labelField}) : t('labelsOff'));
+  });
+
+  // ---- SQL filter ----
+  document.getElementById('tbSqlRun').addEventListener('click', ()=>{
+    const expr = document.getElementById('tbSql').value.trim();
+    const out = document.getElementById('tbSqlOut');
+    if(!expr){ out.textContent = t('tbSqlEmpty'); return; }
+    let hits;
+    try{ hits = runSql(expr); }
+    catch(err){ out.innerHTML = `<span class="bad">${escapeHtml(t('tbSqlBad', {part: err.message}))}</span>`; return; }
+    const prev = selectedPlacemarks(); selected.clear(); prev.forEach(refreshPlacemarkVisual);
+    hits.forEach(pm=> setSelected(pm, true));
+    renderTable();
+    out.innerHTML = t('tbSqlHits', {n: hits.length});
+    showToast(t('selectedN', {n: hits.length}));
+  });
+
+  // ---- spatial join ----
+  function fillJoinSelects(){
+    const src = document.getElementById('tbJoinSrc'), tgt = document.getElementById('tbJoinTgt');
+    const fld = document.getElementById('tbJoinField');
+    const opts = sources.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+    const keep = (el, html, idx)=>{ const v = el.value; el.innerHTML = html;
+      if(v && [...el.options].some(o=>o.value===v)) el.value = v;
+      else if(sources[idx]) el.value = String(sources[idx].id); };
+    keep(src, opts, 0); keep(tgt, opts, 1);
+    const f = fld.value;
+    fld.innerHTML = allFieldKeys().map(k=>`<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    if(f) fld.value = f;
+  }
+  document.getElementById('tbJoinRun').addEventListener('click', ()=>{
+    const out = document.getElementById('tbJoinOut');
+    const s = Number(document.getElementById('tbJoinSrc').value);
+    const tg = Number(document.getElementById('tbJoinTgt').value);
+    const field = document.getElementById('tbJoinField').value;
+    if(s === tg){ out.innerHTML = `<span class="bad">${escapeHtml(t('tbJoinSame'))}</span>`; return; }
+    const res = spatialJoin(s, tg, field);
+    renderTable(); markSession();
+    out.innerHTML = t('tbJoinOut', {matched: res.matched, changed: res.changed, total: res.target, field: escapeHtml(field)});
+    showToast(t('tbJoinToast', {matched: res.matched, changed: res.changed}));
+  });
+
+  // ---- buffer ----
+  document.getElementById('tbBufferRun').addEventListener('click', ()=>{
+    const m = parseFloat(document.getElementById('tbBufferM').value);
+    if(isNaN(m) || m <= 0){ showToast(t('tbBufferBad')); return; }
+    const list = selected.size ? selectedPlacemarks().filter(plotVisible) : activePlacemarks();
+    const n = buildBuffer(list, m);
+    showToast(n ? t('tbBufferDone', {n, m}) : t('noGeometry'));
+  });
+  document.getElementById('tbBufferClear').addEventListener('click', ()=>{
+    if(bufferLayer){ leafletMap.removeLayer(bufferLayer); bufferLayer = null; }
+    showToast(t('tbBufferCleared'));
+  });
+
+  // ---- heatmap / clustering ----
+  let heatOn = false, clusterOn = false;
+  document.getElementById('tbHeat').addEventListener('click', (e)=>{
+    heatOn = !heatOn;
+    const n = buildHeatmap(heatOn);
+    e.currentTarget.classList.toggle('active', heatOn);
+    document.getElementById('tbVizOut').innerHTML = heatOn ? t('tbHeatOn', {n}) : t('tbVizOff');
+  });
+  document.getElementById('tbCluster').addEventListener('click', (e)=>{
+    clusterOn = !clusterOn;
+    const n = buildClusters(clusterOn);
+    e.currentTarget.classList.toggle('active', clusterOn);
+    document.getElementById('tbVizOut').innerHTML = clusterOn ? t('tbClusterOn', {n}) : t('tbVizOff');
+  });
+
+  // ---- bookmarks ----
+  document.getElementById('tbBmAdd').addEventListener('click', ()=>{
+    const name = prompt(t('bmPrompt'), t('bmDefault', {n: bookmarks.length + 1}));
+    if(name === null) return;
+    const c = leafletMap.getCenter();
+    bookmarks.push({name: name.trim() || t('bmDefault', {n: bookmarks.length + 1}),
+                    lat: c.lat, lng: c.lng, zoom: leafletMap.getZoom()});
+    saveBookmarks(); renderBookmarks();
+    showToast(t('bmSaved'));
+  });
+  document.getElementById('kmBookmarkList').addEventListener('click', (e)=>{
+    const go = e.target.closest('button[data-bmgo]');
+    if(go){ const b = bookmarks[Number(go.dataset.bmgo)];
+      setView('map'); setTimeout(()=> leafletMap.setView([b.lat, b.lng], b.zoom), 60); return; }
+    const del = e.target.closest('button[data-bmdel]');
+    if(del){ bookmarks.splice(Number(del.dataset.bmdel), 1); saveBookmarks(); renderBookmarks(); }
+  });
+
+  // Keep the geo panels in step whenever the toolbox opens. NOTE: toolboxBtn's
+  // original 'click' -> openToolbox listener was already bound by the base
+  // script with a direct reference to that function *value* — reassigning the
+  // `openToolbox` variable afterward (as tried earlier) does nothing, since
+  // addEventListener doesn't re-read the variable at call time. An independent
+  // listener sidesteps that entirely.
+  toolboxBtn.addEventListener('click', ()=>{
+    fillJoinSelects();
+    renderBookmarks();
+    paintIcons();
+  });
 
   kmShellReady = true;
   refreshShell();
