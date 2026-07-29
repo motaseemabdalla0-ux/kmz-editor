@@ -223,11 +223,20 @@
     height:100%;
     background:#EFEAE0;
   }
-  .map-legend{
+  /* stacked panels anchored to the map's bottom-right corner */
+  .map-panels{
     position:absolute;
     bottom:16px;
     right:16px;
     z-index:400;
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:8px;
+    width:min(260px, 45%);
+    max-height:calc(100% - 120px);
+  }
+  .map-legend{
     background:rgba(255,255,255,.95);
     border:1px solid var(--line);
     border-radius:var(--radius);
@@ -236,7 +245,26 @@
     max-height:180px;
     overflow:auto;
     box-shadow:0 2px 10px rgba(0,0,0,.1);
+    flex-shrink:1;
+    min-height:0;
   }
+  .map-files{max-height:200px;}
+  .map-files .lg-row{cursor:pointer;}
+  .map-files .lg-row input{width:13px; height:13px; flex-shrink:0;}
+  .map-files .lg-row.off .lg-name{opacity:.45; text-decoration:line-through;}
+  .lg-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .lg-head-row{
+    display:flex; align-items:center; gap:6px;
+    font-weight:700; font-size:10px; color:#8a8378;
+    padding:0 4px 5px; border-bottom:1px solid var(--line); margin-bottom:4px;
+  }
+  .lg-head-row .lg-name{flex:1;}
+  .lg-head-row button{
+    border:1px solid var(--line); background:var(--white); color:var(--brown);
+    border-radius:3px; font-size:10px; font-weight:700; padding:2px 7px;
+    cursor:pointer; font-family:var(--sans);
+  }
+  .lg-head-row button:hover{background:var(--gold-soft); border-color:var(--gold);}
   .map-legend .lg-row{
     display:flex; align-items:center; gap:6px; padding:3px 4px;
     cursor:pointer; border-radius:4px; user-select:none;
@@ -556,7 +584,7 @@
   .btn-danger-solid{background:var(--danger); color:#fff;}
   .btn-danger-solid:hover{filter:brightness(1.1);}
   /* --batch-h is set from JS to the bar's real (possibly wrapped) height */
-  body.has-batch .map-legend{bottom:calc(16px + var(--batch-h, 60px));}
+  body.has-batch .map-panels{bottom:calc(16px + var(--batch-h, 60px));}
   body.has-batch .leaflet-control-attribution{margin-bottom:var(--batch-h, 60px);}
 
   /* ---------- Toast ---------- */
@@ -633,7 +661,10 @@
     <button data-fill="filled" data-i18n="fillFilled" data-i18n-title="fillFilledTip"></button>
     <button data-fill="outline" data-i18n="fillOutline" data-i18n-title="fillOutlineTip"></button>
   </div>
-  <div class="map-legend" id="mapLegend"></div>
+  <div class="map-panels" id="mapPanels">
+    <div class="map-legend map-files" id="mapFiles" style="display:none;"></div>
+    <div class="map-legend" id="mapLegend"></div>
+  </div>
   <div class="map-offline" id="offlineNote"></div>
   <div class="map-hint" id="mapHint"></div>
 </div>
@@ -839,7 +870,11 @@
       fillFilled:'▦ ملء', fillFilledTip:'تعبئة القطع بلون فئتها كاملاً',
       fillOutline:'▢ حدود', fillOutlineTip:'إظهار حدود المزارع فقط لتبقى صورة القمر الصناعي ظاهرة تحتها',
       fillFilledOn:'عرض القطع بتعبئة كاملة',
-      fillOutlineOn:'عرض الحدود فقط — صورة الأرض ظاهرة تحتها'
+      fillOutlineOn:'عرض الحدود فقط — صورة الأرض ظاهرة تحتها',
+      filesPanelHead:'الملفات المعروضة',
+      showAll:'الكل', hideAll:'إخفاء',
+      fileShown:'تم إظهار {name}', fileHidden:'تم إخفاء {name}',
+      shownAllFiles:'تم إظهار كل الملفات', hiddenAllFiles:'تم إخفاء كل الملفات'
     },
     en: {
       title:'KMZ Editor — RCU',
@@ -950,7 +985,11 @@
       fillFilled:'▦ Filled', fillFilledTip:'Fill each plot solidly with its category colour',
       fillOutline:'▢ Outline', fillOutlineTip:'Show plot boundaries only, so the satellite imagery stays visible underneath',
       fillFilledOn:'Showing plots filled',
-      fillOutlineOn:'Showing boundaries only — the ground stays visible'
+      fillOutlineOn:'Showing boundaries only — the ground stays visible',
+      filesPanelHead:'Visible files',
+      showAll:'All', hideAll:'None',
+      fileShown:'Showing {name}', fileHidden:'Hid {name}',
+      shownAllFiles:'All files shown', hiddenAllFiles:'All files hidden'
     }
   };
 
@@ -996,6 +1035,7 @@
   const mapTools = document.getElementById('mapTools');
   const mapBasemaps = document.getElementById('mapBasemaps');
   const mapFillMode = document.getElementById('mapFillMode');
+  const mapFiles = document.getElementById('mapFiles');
   const offlineNote = document.getElementById('offlineNote');
   const langBtn = document.getElementById('langBtn');
   const filesBtn = document.getElementById('filesBtn');
@@ -1041,10 +1081,10 @@
   let mapTool = null;           // armed drag tool on the map: null | 'rect' | 'lasso' | 'brush'
   let legendGroups = [];        // legend rows grouped by land-use label + colour
   let tileErrors = 0;           // failed basemap tile loads for the active source
-  // how plots are painted: 'auto' follows the basemap (outline over imagery), or force one
-  let fillMode = 'auto';
-  try{ fillMode = localStorage.getItem('kmzEditorFill') || 'auto'; }catch(e){}
-  if(['auto','filled','outline'].indexOf(fillMode) === -1) fillMode = 'auto';
+  // how plots are painted; filled is the default everywhere, outline is opt-in
+  let fillMode = 'filled';
+  try{ fillMode = localStorage.getItem('kmzEditorFill') || 'filled'; }catch(e){}
+  if(['filled','outline'].indexOf(fillMode) === -1) fillMode = 'filled';
   let basemaps = {};            // streets | satellite | hybrid
   let baseKey = 'streets';
   try{ baseKey = localStorage.getItem('kmzEditorBasemap') || 'streets'; }catch(e){}
@@ -1302,6 +1342,7 @@ ${inner}</table>
     buildMapLegend();
     buildFieldSelectors();
     renderSourceList();
+    renderFilesPanel();
     setMapTool(null);
     exportBtn.disabled = false;
     resetBtn.disabled = false;
@@ -1490,8 +1531,6 @@ ${inner}</table>
     if(!btn || !leafletMap) return;
     if(btn.dataset.base === baseKey) return;
     applyBasemap(btn.dataset.base);
-    // in auto mode the paint style follows the basemap
-    if(fillMode === 'auto'){ syncFillButtons(); refreshAllMapVisuals(); }
   });
 
   function syncFillButtons(){
@@ -1686,14 +1725,69 @@ ${inner}</table>
 
   function legendLabelOf(pm){
     const f = pm.fields.find(x=>/land use level 0?1 description/i.test(x.key));
-    return f ? f.val : (pm.styleId || '');
+    if(f && f.val) return f.val;
+    // no land-use field: fall back to the style id, minus the prefix merging added
+    return (pm.styleId || '').replace(/^f\d+_/, '');
   }
+
+  // ---------- Per-file visibility panel ----------
+  function renderFilesPanel(){
+    if(sources.length < 2){ mapFiles.style.display = 'none'; return; }
+    mapFiles.style.display = 'block';
+    const rows = sources.map(s=>{
+      const live = placemarks.filter(p=>p.sourceId === s.id).length;
+      const on = s.visible !== false;
+      // a <div>, not a <label>: a label re-dispatches the click onto the checkbox and toggles twice
+      return `<div class="lg-row${on ? '' : ' off'}" data-file="${s.id}">
+        <input type="checkbox" ${on ? 'checked' : ''}>
+        <span class="lg-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
+        <span class="lg-count">${live}</span></div>`;
+    }).join('');
+    mapFiles.innerHTML = `<div class="lg-head-row">
+        <span class="lg-name">${escapeHtml(t('filesPanelHead'))}</span>
+        <button data-vis="all">${escapeHtml(t('showAll'))}</button>
+        <button data-vis="none">${escapeHtml(t('hideAll'))}</button>
+      </div>` + rows;
+  }
+
+  function setSourceVisible(source, on){
+    source.visible = on;
+    const mine = placemarks.filter(p=>p.sourceId === source.id);
+    // never leave invisible plots selected — they would be deleted unseen
+    if(!on) mine.forEach(p=> selected.delete(p.idx));
+    mine.forEach(refreshPlacemarkVisual);
+  }
+
+  mapFiles.addEventListener('click', (e)=>{
+    const bulk = e.target.closest('button[data-vis]');
+    if(bulk){
+      const on = bulk.dataset.vis === 'all';
+      sources.forEach(s=> setSourceVisible(s, on));
+      renderFilesPanel();
+      buildMapLegend();
+      renderTable();
+      showToast(on ? t('shownAllFiles') : t('hiddenAllFiles'));
+      return;
+    }
+    const row = e.target.closest('.lg-row[data-file]');
+    if(!row) return;
+    const source = sources.find(s=>s.id === Number(row.dataset.file));
+    if(!source) return;
+    // the click may land on the checkbox itself or on the row around it
+    const box = row.querySelector('input');
+    const on = (e.target === box) ? box.checked : (source.visible === false);
+    setSourceVisible(source, on);
+    renderFilesPanel();
+    buildMapLegend();
+    renderTable();
+    showToast(on ? t('fileShown', {name: source.name}) : t('fileHidden', {name: source.name}));
+  });
 
   function buildMapLegend(){
     // Merged files often repeat the same land use under different style ids —
     // group by label+colour so one category is one legend row.
     const groups = new Map();
-    placemarks.forEach(pm=>{
+    activePlacemarks().forEach(pm=>{
       if(!pm.styleId) return;
       const colour = (styleColorMap[pm.styleId] || {fill:DEFAULT_FILL}).fill.hex;
       const label = legendLabelOf(pm);
@@ -1719,7 +1813,7 @@ ${inner}</table>
     if(!row) return;
     const group = legendGroups[Number(row.dataset.group)];
     if(!group) return;
-    const targets = placemarks.filter(p=> group.ids.has(p.styleId));
+    const targets = activePlacemarks().filter(p=> group.ids.has(p.styleId));
     if(!targets.length) return;
     const allSelected = targets.every(p=>selected.has(p.idx));
     targets.forEach(p=> setSelected(p, !allSelected));
@@ -1757,15 +1851,17 @@ ${inner}</table>
     layer.bindPopup(container).openPopup();
   }
 
-  // 'auto' shows boundaries over imagery (so the farms stay visible) and solid fills on the street map
-  function effectiveFill(){
-    if(fillMode !== 'auto') return fillMode;
-    return baseKey === 'streets' ? 'filled' : 'outline';
-  }
+  function effectiveFill(){ return fillMode; }
 
   function refreshPlacemarkVisual(pm){
     const layer = mapLayers[pm.idx];
     if(!layer) return;
+    // plots from a hidden file leave the map entirely rather than just fading
+    if(!sourceVisible(pm)){
+      if(mapLayerGroup && mapLayerGroup.hasLayer(layer)) mapLayerGroup.removeLayer(layer);
+      return;
+    }
+    if(mapLayerGroup && !mapLayerGroup.hasLayer(layer)) mapLayerGroup.addLayer(layer);
     const style = styleColorMap[pm.styleId] || {fill:DEFAULT_FILL, line:DEFAULT_LINE};
     const matches = matchesSearch(pm);
     const outline = effectiveFill() === 'outline';
@@ -1881,6 +1977,10 @@ ${inner}</table>
     return f ? f.val : '';
   }
 
+  // everything in the advanced panel works on visible files only, so a hidden
+  // file can never be swept into a selection (and then deleted) unseen
+  function activePlacemarks(){ return placemarks.filter(sourceVisible); }
+
   function allFieldKeys(){
     const keys = [];
     const seen = new Set();
@@ -1907,7 +2007,7 @@ ${inner}</table>
 
   function distinctValues(key){
     const counts = new Map();
-    placemarks.forEach(pm=>{
+    activePlacemarks().forEach(pm=>{
       const v = fieldValueOf(pm, key);
       counts.set(v, (counts.get(v) || 0) + 1);
     });
@@ -1933,7 +2033,7 @@ ${inner}</table>
   function fieldMatches(){
     if(!checkedValues.size) return [];
     const key = selField.value;
-    return placemarks.filter(pm=> checkedValues.has(fieldValueOf(pm, key)));
+    return activePlacemarks().filter(pm=> checkedValues.has(fieldValueOf(pm, key)));
   }
 
   function updateFieldHint(){
@@ -2011,7 +2111,7 @@ ${inner}</table>
     const key = selPasteField.value;
     const hit = new Set();
     const matches = [];
-    placemarks.forEach(pm=>{
+    activePlacemarks().forEach(pm=>{
       const hay = key
         ? [fieldValueOf(pm, key)]
         : [pm.name, ...pm.fields.map(f=>f.val)];
@@ -2038,9 +2138,9 @@ ${inner}</table>
     updatePasteHint();
   });
 
-  document.getElementById('selAllPlots').addEventListener('click', ()=> applyMatches(placemarks.slice(), t('quickAll')));
-  document.getElementById('selDeletedOnes').addEventListener('click', ()=> applyMatches(placemarks.filter(p=>p.deleted), t('quickDeleted')));
-  document.getElementById('selModified').addEventListener('click', ()=> applyMatches(placemarks.filter(p=>p.dirty), t('quickModified')));
+  document.getElementById('selAllPlots').addEventListener('click', ()=> applyMatches(activePlacemarks(), t('quickAll')));
+  document.getElementById('selDeletedOnes').addEventListener('click', ()=> applyMatches(activePlacemarks().filter(p=>p.deleted), t('quickDeleted')));
+  document.getElementById('selModified').addEventListener('click', ()=> applyMatches(activePlacemarks().filter(p=>p.dirty), t('quickModified')));
 
   function openSelPanel(){
     if(!placemarks.length){ showToast(t('loadFileFirst')); return; }
@@ -2132,7 +2232,14 @@ ${inner}</table>
     document.getElementById('selAllChk').addEventListener('click', ()=> selectShownBtn.click());
   }
 
+  // a hidden source is filtered out everywhere: map, table, counts and bulk tools
+  function sourceVisible(pm){
+    const s = sources.find(x=>x.id === pm.sourceId);
+    return !s || s.visible !== false;
+  }
+
   function matchesSearch(pm){
+    if(!sourceVisible(pm)) return false;
     if(!searchTerm) return true;
     const t = searchTerm.toLowerCase();
     if(pm.name.toLowerCase().includes(t)) return true;
@@ -2309,6 +2416,7 @@ ${inner}</table>
     selPasteText.value = '';
     filesPop.classList.remove('open');
     filesBtn.style.display = 'none';
+    mapFiles.style.display = 'none';
     if(mapLayerGroup) mapLayerGroup.clearLayers();
     Object.keys(mapLayers).forEach(k=>delete mapLayers[k]);
     toolbar.style.display = 'none';
@@ -2348,6 +2456,7 @@ ${inner}</table>
       renderTable();
       buildMapLegend();
       renderSourceList();
+      renderFilesPanel();
       relabelFieldSelectors(keptField, keptPaste);
       updateFieldHint();
       updatePasteHint();
