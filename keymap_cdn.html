@@ -3,48 +3,59 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>محرر KMZ — RCU</title>
+<title>KEYMAP — Geospatial Intelligence Platform</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{
-    /* RCU Visual Identity 2024 — primary palette */
-    --beige:#F8F4EF;          /* Community Beige  */
-    --brown:#3D3936;          /* Ikmah Brown      */
-    --gold:#BA9863;           /* RCU Gold         */
-    --gold-soft:#E8DCC6;
-    /* secondary palette */
-    --sandstone:#E2C6AA;      /* Hegra Sandstone  */
-    --mountain:#805E45;       /* Mountain Brown   */
-    --frankincense:#D6AD68;   /* Frankincense Yellow */
-    --ochre:#D08B67;          /* Dadan Ochre      */
-    --oldtown:#986018;        /* Old Town Brown   */
-    --oasis:#14332D;          /* Oasis Green      */
-    --majdoul:#402022;        /* Majdoul Brown    */
-    /* semantic roles, all drawn from the brand palette */
-    --danger:var(--majdoul);
-    --danger-soft:#F3E4E0;
-    --danger-strong:var(--ochre);
-    --ok:var(--oasis);
-    --ok-soft:#DDE6E2;
-    --line:#E3DACB;
-    --line-strong:#CFC2AC;
-    --ink-soft:#7C736A;
-    --white:#FFFFFF;
-    --radius:8px;
-    --radius-sm:5px;
-    --shadow-1:0 1px 2px rgba(61,57,54,.06), 0 1px 3px rgba(61,57,54,.08);
-    --shadow-2:0 4px 16px rgba(61,57,54,.12);
-    --shadow-3:0 12px 32px rgba(61,57,54,.18);
-    /* RCU Ease — the brand's motion curve */
-    --ease:cubic-bezier(.16,.95,.16,1);
-    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
-    /* Arial is RCU's approved business-communications face; DIN Next is
-       licensed and cannot be embedded in a standalone file */
-    --sans: Arial, "Arial Arabic", "Segoe UI", Tahoma, sans-serif;
-  }
-  /* icon system: inline SVG, inherits colour and sits on the text baseline */
+    /* ===== KEYMAP — Geospatial Intelligence Platform ===== */
+    --bg:#0B1220;
+    --bg-2:#0E1626;
+    --surface:#141D30;
+    --surface-2:#1A2438;
+    --surface-3:#232F47;
+    --glass:rgba(20,29,48,.72);
+    --glass-hi:rgba(30,41,64,.78);
+    --hairline:rgba(255,255,255,.08);
+    --hairline-2:rgba(255,255,255,.14);
+    --blur:16px;
+
+    --gold:#C89B3C;
+    --gold-hi:#E2B65C;
+    --gold-dim:rgba(200,155,60,.15);
+    --gold-soft:rgba(200,155,60,.22);
+
+    --text:#E8ECF4;
+    --text-2:#9AA6BD;
+    --text-3:#6B7793;
+
+    --danger:#E0655B;
+    --danger-soft:rgba(224,101,91,.16);
+    --danger-strong:#E0655B;
+    --ok:#4FBF8B;
+    --ok-soft:rgba(79,191,139,.16);
+
+    /* legacy aliases — existing rules keep working against the dark ramp */
+    --beige:#0B1220;
+    --brown:#E8ECF4;
+    --white:#141D30;
+    --line:rgba(255,255,255,.09);
+    --line-strong:rgba(255,255,255,.16);
+    --ink-soft:#9AA6BD;
+    --sandstone:#E2C6AA; --mountain:#805E45; --frankincense:#D6AD68;
+    --ochre:#D08B67; --oldtown:#986018; --oasis:#14332D; --majdoul:#402022;
+
+    --radius:12px;
+    --radius-sm:8px;
+    --radius-lg:16px;
+    --shadow-1:0 1px 2px rgba(0,0,0,.4);
+    --shadow-2:0 8px 24px rgba(0,0,0,.45);
+    --shadow-3:0 20px 48px rgba(0,0,0,.55);
+    --ease:cubic-bezier(.16,1,.3,1);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace;
+    --sans: Inter, "Inter var", system-ui, -apple-system, "Segoe UI", "Noto Sans Arabic", Tahoma, sans-serif;
+  }  /* icon system: inline SVG, inherits colour and sits on the text baseline */
   .ico{display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;}
   .ico svg{width:1.05em; height:1.05em; display:block;}
   .btn, .mini-btn, .view-btn, .map-tools button, .icon-btn, .file-label, .empty-cta, .lg-pick, .panel-close{
@@ -661,6 +672,213 @@
   }
   .toast.show{opacity:1; bottom:30px;}
   body.has-batch .toast.show{bottom:calc(24px + var(--batch-h, 60px));}
+
+  /* ================= KEYMAP dark surface layer ================= */
+  body{background:var(--bg); color:var(--text);}
+  ::selection{background:var(--gold-soft); color:var(--text);}
+  *:focus-visible{outline:2px solid var(--gold); outline-offset:2px; border-radius:4px;}
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--surface-3); border-radius:99px; border:2px solid var(--bg);}
+  ::-webkit-scrollbar-thumb:hover{background:#31405e;}
+
+  /* glass chrome */
+  header{
+    background:var(--glass); backdrop-filter:blur(var(--blur)) saturate(1.3);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.3);
+    border-bottom:1px solid var(--hairline); color:var(--text);
+    padding:12px 20px;
+  }
+  header h1{font-size:15px; font-weight:600; letter-spacing:-.2px; display:flex; flex-direction:column; gap:1px;}
+  header h1 .brand{font-size:17px; font-weight:700; letter-spacing:2.5px; color:var(--text);}
+  header h1 .brand em{font-style:normal; color:var(--gold);}
+  header h1 .tagline{font-size:9.5px; font-weight:500; letter-spacing:1.6px;
+    text-transform:uppercase; color:var(--text-3);}
+  .toolbar{
+    background:var(--glass); backdrop-filter:blur(var(--blur));
+    -webkit-backdrop-filter:blur(var(--blur));
+    border-bottom:1px solid var(--hairline); padding:9px 20px;
+  }
+
+  /* controls */
+  .btn, .mini-btn, .view-btn, .file-label, .icon-btn, .lg-pick, .empty-cta, .map-tools button{
+    transition:background .18s var(--ease), color .18s var(--ease),
+               border-color .18s var(--ease), transform .12s var(--ease);
+  }
+  .btn{border-radius:var(--radius-sm); font-weight:600;}
+  .btn-gold{background:var(--gold); color:#141005; border-color:transparent;}
+  .btn-gold:hover{background:var(--gold-hi); filter:none;}
+  .btn-ghost{background:rgba(255,255,255,.05); color:var(--text-2); border-color:var(--hairline);}
+  .btn-ghost:hover{background:rgba(255,255,255,.09); color:var(--text);}
+  .btn-outline{background:transparent; border-color:var(--hairline-2); color:var(--text-2);}
+  .btn-outline:hover{border-color:var(--gold); color:var(--text);}
+  .btn-danger{background:transparent; border-color:rgba(224,101,91,.5); color:var(--danger);}
+  .btn-danger:hover{background:var(--danger-soft);}
+  .btn-danger-solid{background:var(--danger); color:#1a0d0c;}
+  .file-label{border:1px dashed var(--hairline-2); color:var(--text-2); border-radius:var(--radius-sm);}
+  .file-label:hover{border-color:var(--gold); color:var(--text); background:var(--gold-dim);}
+  .mini-btn{background:rgba(255,255,255,.04); border-color:var(--hairline); color:var(--text-2); border-radius:var(--radius-sm);}
+  .mini-btn:hover{background:rgba(255,255,255,.08); border-color:var(--hairline-2); color:var(--text);}
+  .mini-btn.active{background:var(--gold); border-color:var(--gold); color:#141005;}
+  .view-toggle{border-color:var(--hairline); border-radius:var(--radius-sm); background:rgba(255,255,255,.04);}
+  .view-btn{background:transparent; color:var(--text-3);}
+  .view-btn:hover{color:var(--text);}
+  .view-btn.active{background:var(--gold); color:#141005;}
+  .view-btn + .view-btn{border-inline-start-color:var(--hairline);}
+  .icon-btn{background:rgba(255,255,255,.04); border-color:var(--hairline); color:var(--text-2); border-radius:6px;}
+  .icon-btn:hover{border-color:var(--gold); background:var(--gold-dim); color:var(--gold);}
+  .icon-btn.danger:hover{border-color:var(--danger); background:var(--danger-soft); color:var(--danger);}
+  .btn:disabled, .icon-btn:disabled{opacity:.3;}
+
+  /* fields */
+  .search-wrap input, .field input, .field textarea, .sel-sec select,
+  .sel-sec input[type=text], .sel-sec textarea{
+    background:rgba(255,255,255,.04); border-color:var(--hairline);
+    color:var(--text); border-radius:var(--radius-sm);
+  }
+  .search-wrap input::placeholder, .sel-sec input::placeholder, .sel-sec textarea::placeholder{color:var(--text-3);}
+  .search-wrap input:focus, .field input:focus, .field textarea:focus{
+    outline:none; border-color:var(--gold); background:rgba(255,255,255,.07);
+    box-shadow:0 0 0 3px var(--gold-dim);
+  }
+  .stat{color:var(--text-3);}
+  .stat b{color:var(--text); font-variant-numeric:tabular-nums;}
+  .pill{background:var(--gold-dim); color:var(--gold);}
+  .pill.warn{background:var(--gold-dim); color:var(--gold-hi);}
+  .pill.danger{background:var(--danger-soft); color:var(--danger);}
+
+  /* floating map panels — glass */
+  .map-tools, .map-legend, .map-hint, .map-offline, .files-pop, .empty{
+    background:var(--glass); backdrop-filter:blur(var(--blur)) saturate(1.25);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.25);
+    border:1px solid var(--hairline); color:var(--text);
+    border-radius:var(--radius); box-shadow:var(--shadow-2);
+  }
+  .map-tools button{color:var(--text-2); border-radius:7px;}
+  .map-tools button:hover{background:rgba(255,255,255,.07); color:var(--text);}
+  .map-tools button.active, .map-basemaps button.active, .map-fillmode button.active{
+    background:var(--gold); color:#141005;
+  }
+  .map-hint{color:var(--text-2); font-size:11px;}
+  .map-legend .lg-row:hover, .map-files .lg-row:hover{background:rgba(255,255,255,.06);}
+  .lg-head, .lg-head-row{color:var(--text-3); border-color:var(--hairline);}
+  .lg-head-row button{background:rgba(255,255,255,.05); border-color:var(--hairline); color:var(--text-2); border-radius:5px;}
+  .lg-head-row button:hover{background:var(--gold-dim); border-color:var(--gold); color:var(--gold);}
+  .lg-count, .src-count{color:var(--text-3);}
+  .lg-pick{background:rgba(255,255,255,.05); border-color:var(--hairline); color:var(--text-2);}
+  .lg-pick:hover{background:var(--gold-dim); border-color:var(--gold); color:var(--gold);}
+  .empty{border-top:2px solid var(--gold); border-radius:var(--radius-lg);}
+  .empty p{color:var(--text-2);}
+  .empty svg{color:var(--gold); opacity:.85;}
+  .empty-cta{background:var(--gold); color:#141005; border-radius:var(--radius-sm);}
+  .empty-cta:hover{background:var(--gold-hi);}
+  .files-pop{border-radius:var(--radius);}
+  .fp-head, .fp-note{color:var(--text-3); border-color:var(--hairline);}
+  .src-row{border-color:var(--hairline);}
+  .src-name{color:var(--text);}
+
+  /* table */
+  .table-wrap{background:var(--bg);}
+  thead th{background:var(--surface-2); color:var(--text-2); border-bottom:1px solid var(--hairline-2);}
+  thead th.sortable:hover{background:var(--surface-3); color:var(--text);}
+  tbody td{border-bottom:1px solid rgba(255,255,255,.05); color:var(--text-2);}
+  tbody tr:nth-child(odd) td{background:var(--bg);}
+  tbody tr:nth-child(even) td{background:#0D1523;}
+  tbody tr:hover td{background:var(--surface-2) !important; color:var(--text);}
+  tbody td:nth-child(2){color:var(--text);}
+  tbody tr.selected td{background:rgba(200,155,60,.13) !important;}
+  tbody tr.selected.deleted td{background:rgba(224,101,91,.14) !important;}
+  tbody tr.deleted td{background:rgba(224,101,91,.09) !important; color:var(--text-3);}
+  [dir=rtl] tbody tr.selected td:nth-child(1){box-shadow:inset 3px 0 0 var(--gold);}
+  [dir=ltr] tbody tr.selected td:nth-child(1){box-shadow:inset -3px 0 0 var(--gold);}
+  input[type=checkbox]{accent-color:var(--gold);}
+
+  /* panels */
+  .overlay{background:rgba(5,9,17,.62); backdrop-filter:blur(3px);}
+  .panel{
+    background:var(--surface); border:1px solid var(--hairline);
+    box-shadow:var(--shadow-3); border-left:none; border-right:none;
+  }
+  .panel-right{border-inline-start:1px solid var(--hairline);}
+  .panel-head, .panel-foot{border-color:var(--hairline);}
+  .panel-head h2{color:var(--text); font-weight:600;}
+  .panel-close{color:var(--text-3); border-radius:6px;}
+  .panel-close:hover{color:var(--text); background:rgba(255,255,255,.07);}
+  .field label{color:var(--text-3);}
+  .field.changed input, .field.changed textarea{border-color:var(--gold); background:var(--gold-dim);}
+  .sel-sec{background:rgba(255,255,255,.03); border-color:var(--hairline); border-radius:var(--radius);}
+  .sel-sec > h3{color:var(--text);}
+  .sel-hint{color:var(--text-3);}
+  .sel-hint b{color:var(--text);}
+  .val-list{background:rgba(0,0,0,.25); border-color:var(--hairline); border-radius:var(--radius-sm);}
+  .val-row{border-color:rgba(255,255,255,.05);}
+  .val-row:hover{background:rgba(255,255,255,.06);}
+  .val-empty, .stats-empty{color:var(--text-3);}
+  .seg{border-color:var(--hairline); border-radius:var(--radius-sm); background:rgba(255,255,255,.04);}
+  .seg button{background:transparent; color:var(--text-3);}
+  .seg button:hover{color:var(--text);}
+  .seg button.active{background:var(--gold); color:#141005;}
+  .seg button + button{border-inline-start-color:var(--hairline);}
+  .stats-grid .sk{color:var(--text-3);}
+  .stats-grid .sv{color:var(--text);}
+
+  /* batch bar */
+  .batchbar{
+    background:var(--glass); backdrop-filter:blur(var(--blur)) saturate(1.3);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.3);
+    border-top:1px solid var(--gold); color:var(--text); box-shadow:var(--shadow-3);
+  }
+  .bb-count b{color:var(--gold);}
+  .bb-note{color:var(--text-3);}
+  .toast{
+    background:var(--surface-2); color:var(--text);
+    border:1px solid var(--hairline-2); border-radius:var(--radius-sm);
+    box-shadow:var(--shadow-3);
+  }
+
+  /* leaflet chrome */
+  #map{background:var(--bg-2);}
+  .leaflet-control-zoom a{
+    background:var(--glass) !important; color:var(--text) !important;
+    border-color:var(--hairline) !important;
+    backdrop-filter:blur(var(--blur)); -webkit-backdrop-filter:blur(var(--blur));
+  }
+  .leaflet-control-zoom a:hover{background:var(--surface-3) !important; color:var(--gold) !important;}
+  .leaflet-bar{border:1px solid var(--hairline) !important; border-radius:var(--radius-sm) !important; overflow:hidden;}
+  .leaflet-control-attribution{
+    background:rgba(11,18,32,.75) !important; color:var(--text-3) !important;
+    backdrop-filter:blur(8px); border-radius:6px 0 0 0;
+  }
+  .leaflet-control-attribution a{color:var(--text-2) !important;}
+  .leaflet-popup-content-wrapper{
+    background:var(--surface-2); color:var(--text);
+    border:1px solid var(--hairline-2); border-radius:var(--radius);
+    box-shadow:var(--shadow-3);
+  }
+  .leaflet-popup-tip{background:var(--surface-2); border:1px solid var(--hairline-2);}
+  .leaflet-popup-close-button{color:var(--text-3) !important;}
+  .map-popup .mp-title{color:var(--text);}
+
+  /* motion */
+  @keyframes kmFadeUp{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  .map-tools, .map-legend, .map-files, .empty{animation:kmFadeUp .32s var(--ease) both;}
+  .panel{transition:transform .28s var(--ease);}
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{animation-duration:.01ms !important; transition-duration:.01ms !important;}
+  }
+
+  /* responsive */
+  @media (max-width: 900px){
+    header{padding:10px 14px; gap:10px;}
+    .toolbar{padding:8px 14px; gap:8px;}
+    .map-panels{width:min(230px, 52%);}
+  }
+  @media (max-width: 620px){
+    header h1 .tagline{display:none;}
+    .search-wrap{min-width:140px;}
+    .batchbar{padding:8px 12px; gap:6px;}
+    .batchbar .btn{padding:7px 10px; font-size:12px;}
+  }
 </style>
 </head>
 <body>
@@ -885,8 +1103,8 @@
   // ---------- Localisation ----------
   const I18N = {
     ar: {
-      title:'محرر KMZ — RCU',
-      appTitle:'محرر <span>KMZ</span> — RCU Land Use',
+      title:'KEYMAP — منصة الذكاء الجغرافي',
+      appTitle:'<span class="brand">KEY<em>MAP</em></span><span class="tagline">منصة الذكاء الجغرافي</span>',
       loadKmz:'تحميل ملف KMZ',
       resetAll:'تراجع عن الكل',
       exportKmz:'تصدير KMZ',
@@ -1042,8 +1260,8 @@
       tbExportRun:'تصدير المحدد فقط', tbExportNeedSelection:'حدّد قطعاً أولاً', tbExportDone:'تم تصدير {n} قطعة'
     },
     en: {
-      title:'KMZ Editor — RCU',
-      appTitle:'<span>KMZ</span> Editor — RCU Land Use',
+      title:'KEYMAP — Geospatial Intelligence Platform',
+      appTitle:'<span class="brand">KEY<em>MAP</em></span><span class="tagline">Geospatial Intelligence Platform</span>',
       loadKmz:'Load KMZ file',
       resetAll:'Reset all',
       exportKmz:'Export KMZ',
