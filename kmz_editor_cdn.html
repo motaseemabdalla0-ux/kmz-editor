@@ -524,6 +524,15 @@
   .sel-hint{font-size:11px; color:#8a8378; line-height:1.6; min-height:16px;}
   .sel-hint b{color:var(--brown); font-family:var(--mono);}
   .sel-hint .bad{color:var(--danger);}
+  .sel-hint .good{color:var(--ok);}
+  .btn-icon{padding:8px 12px; font-size:15px; line-height:1;}
+  .stats-grid{
+    display:grid; grid-template-columns:auto 1fr; gap:4px 12px;
+    font-size:12px; padding:6px 2px;
+  }
+  .stats-grid .sk{color:#8a8378; font-weight:700; font-size:11px;}
+  .stats-grid .sv{font-family:var(--mono); text-align:end; font-variant-numeric:tabular-nums;}
+  .stats-empty{font-size:11.5px; color:#8a8378; padding:6px 2px;}
   .panel-head{
     padding:16px 18px;
     border-bottom:1px solid var(--line);
@@ -625,6 +634,8 @@
     </div>
   </div>
   <div class="spacer"></div>
+  <button class="btn btn-ghost btn-icon" id="undoBtn" disabled>↶</button>
+  <button class="btn btn-ghost btn-icon" id="redoBtn" disabled>↷</button>
   <button class="btn btn-gold" id="saveBtn" style="display:none;"></button>
   <button class="btn btn-ghost" id="langBtn" title="Switch language / تبديل اللغة">EN</button>
   <button class="btn btn-ghost" id="resetBtn" data-i18n="resetAll" disabled></button>
@@ -642,6 +653,7 @@
   <button class="mini-btn" id="selectModeBtn" data-i18n="selectMode" data-i18n-title="selectModeTip"></button>
   <button class="mini-btn" id="selectShownBtn" data-i18n="selectShown" data-i18n-title="selectShownTip"></button>
   <button class="mini-btn" id="advSelectBtn" data-i18n="advSelect" data-i18n-title="advSelectTip"></button>
+  <button class="mini-btn" id="toolboxBtn" data-i18n="toolboxBtn" data-i18n-title="toolboxBtnTip"></button>
   <div class="view-toggle">
     <button class="view-btn active" id="viewMapBtn" data-view="map" data-i18n="viewMap"></button>
     <button class="view-btn" id="viewTableBtn" data-view="table" data-i18n="viewTable"></button>
@@ -697,6 +709,63 @@
   <div class="panel-foot">
     <button class="btn btn-outline" id="panelCancel" data-i18n="cancel"></button>
     <button class="btn btn-gold" id="panelSave" data-i18n="saveEdit"></button>
+  </div>
+</div>
+
+<div class="panel panel-right" id="toolboxPanel">
+  <div class="panel-head">
+    <h2 data-i18n="toolboxTitle"></h2>
+    <button class="panel-close" id="toolboxClose">✕</button>
+  </div>
+  <div class="panel-body">
+    <div class="sel-sec">
+      <h3 data-i18n="tbDupTitle"></h3>
+      <div class="sel-hint" data-i18n="tbDupNote"></div>
+      <select id="tbDupMode">
+        <option value="geometry" data-i18n-opt="tbDupGeom"></option>
+        <option value="field" data-i18n-opt="tbDupField"></option>
+        <option value="overlap" data-i18n-opt="tbDupOverlap"></option>
+      </select>
+      <select id="tbDupField"></select>
+      <div class="sel-hint" id="tbDupResult"></div>
+      <button class="btn btn-gold" id="tbDupRun" data-i18n="tbDupRun"></button>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="tbCalcTitle"></h3>
+      <div class="sel-hint" data-i18n="tbCalcNote"></div>
+      <select id="tbCalcField"></select>
+      <select id="tbCalcOp">
+        <option value="set" data-i18n-opt="tbCalcSet"></option>
+        <option value="replace" data-i18n-opt="tbCalcReplace"></option>
+        <option value="prefix" data-i18n-opt="tbCalcPrefix"></option>
+        <option value="suffix" data-i18n-opt="tbCalcSuffix"></option>
+      </select>
+      <input type="text" id="tbCalcA" data-i18n-ph="tbCalcAPh">
+      <input type="text" id="tbCalcB" data-i18n-ph="tbCalcBPh" style="display:none;">
+      <div class="sel-hint" id="tbCalcHint"></div>
+      <button class="btn btn-gold" id="tbCalcRun" data-i18n="tbCalcRun"></button>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="tbStatsTitle"></h3>
+      <select id="tbStatsField"></select>
+      <select id="tbStatsScope">
+        <option value="selection" data-i18n-opt="tbScopeSelection"></option>
+        <option value="visible" data-i18n-opt="tbScopeVisible"></option>
+      </select>
+      <div class="stats-grid" id="tbStatsOut"></div>
+      <button class="btn btn-outline" id="tbStatsRun" data-i18n="tbStatsRun"></button>
+    </div>
+
+    <div class="sel-sec">
+      <h3 data-i18n="tbExportTitle"></h3>
+      <div class="sel-hint" data-i18n="tbExportNote"></div>
+      <button class="btn btn-gold" id="tbExportSel" data-i18n="tbExportRun"></button>
+    </div>
+  </div>
+  <div class="panel-foot">
+    <button class="btn btn-outline" id="toolboxDone" data-i18n="close"></button>
   </div>
 </div>
 
@@ -898,7 +967,34 @@
       mergeNeedsTwo:'تحتاج ملفين معروضين على الأقل للدمج',
       mergePrompt:'اسم الملف الناتج من دمج {n} ملفات:',
       mergedInto:'تم دمج {n} قطعة في «{name}»',
-      sortTip:'اضغط للترتيب حسب هذا العمود'
+      sortTip:'اضغط للترتيب حسب هذا العمود',
+      toolboxBtn:'🧰 صندوق الأدوات', toolboxBtnTip:'أدوات تحليل ومعالجة بالجملة', toolboxTitle:'صندوق الأدوات',
+      undo:'تراجع', redo:'إعادة', undoOf:'تراجع عن: {what}', redoOf:'إعادة: {what}',
+      undone:'تم التراجع عن: {what}', redone:'تمت إعادة: {what}',
+      nothingToUndo:'لا يوجد ما يمكن التراجع عنه', nothingToRedo:'لا يوجد ما يمكن إعادته',
+      opEdit:'تعديل قطعة', opDelete:'حذف قطعة', opRestore:'استرجاع قطعة',
+      opBulkDelete:'حذف {n} قطعة', opBulkRestore:'استرجاع {n} قطعة', opFieldCalc:'تعديل حقل لـ {n} قطعة',
+      tbDupTitle:'كشف التكرار والتداخل',
+      tbDupNote:'يفحص الملفات المعروضة ويحدد النسخ الزائدة لتحذفها. الأصل الأول من كل مجموعة يبقى دون تحديد.',
+      tbDupGeom:'تكرار بنفس الهندسة', tbDupField:'تكرار بنفس قيمة حقل', tbDupOverlap:'تداخل بين ملفات مختلفة',
+      tbDupRun:'ابحث وحدّد الزائد',
+      tbDupNone:'لا توجد تكرارات', tbDupFound:'وُجدت <b>{n}</b> قطعة زائدة في <b>{g}</b> مجموعة — تم تحديدها',
+      tbDupSelected:'تم تحديد {n} قطعة مكررة', tbWorking:'جارٍ الفحص...',
+      tbCalcTitle:'حاسبة الحقول',
+      tbCalcNote:'تعدّل حقلاً واحداً لكل القطع المحددة دفعة واحدة.',
+      tbCalcSet:'ضبط القيمة', tbCalcReplace:'استبدال نص', tbCalcPrefix:'إضافة في البداية', tbCalcSuffix:'إضافة في النهاية',
+      tbCalcAPh:'القيمة / النص المطلوب', tbCalcBPh:'النص البديل',
+      tbCalcRun:'طبّق على المحدد', tbCalcTarget:'سيُطبَّق على <b>{n}</b> قطعة محددة',
+      tbCalcNeedSelection:'حدّد قطعاً أولاً', tbCalcNeedValue:'اكتب القيمة أولاً',
+      tbCalcConfirm:'تعديل الحقل «{field}» لـ {n} قطعة؟',
+      tbCalcDone:'تم تعديل {n} قطعة', tbCalcNoChange:'لم تتغير أي قيمة',
+      tbStatsTitle:'إحصائيات', tbStatsRun:'تحديث',
+      tbScopeSelection:'القطع المحددة', tbScopeVisible:'كل المعروض',
+      tbStatCount:'عدد القطع', tbStatNumeric:'قيم رقمية', tbStatSum:'المجموع',
+      tbStatMean:'المتوسط', tbStatMin:'أصغر قيمة', tbStatMax:'أكبر قيمة',
+      tbStatsEmpty:'لا توجد قطع في النطاق المختار',
+      tbExportTitle:'تصدير المحدد', tbExportNote:'ينتج KMZ يحتوي القطع المحددة فقط، دون المساس بعملك الحالي.',
+      tbExportRun:'تصدير المحدد فقط', tbExportNeedSelection:'حدّد قطعاً أولاً', tbExportDone:'تم تصدير {n} قطعة'
     },
     en: {
       title:'KMZ Editor — RCU',
@@ -1026,7 +1122,34 @@
       mergeNeedsTwo:'You need at least two visible files to merge',
       mergePrompt:'Name for the file merged from {n} files:',
       mergedInto:'Merged {n} plots into \"{name}\"',
-      sortTip:'Click to sort by this column'
+      sortTip:'Click to sort by this column',
+      toolboxBtn:'🧰 Toolbox', toolboxBtnTip:'Analysis and bulk-processing tools', toolboxTitle:'Toolbox',
+      undo:'Undo', redo:'Redo', undoOf:'Undo: {what}', redoOf:'Redo: {what}',
+      undone:'Undone: {what}', redone:'Redone: {what}',
+      nothingToUndo:'Nothing to undo', nothingToRedo:'Nothing to redo',
+      opEdit:'plot edit', opDelete:'plot deletion', opRestore:'plot restore',
+      opBulkDelete:'deleting {n} plots', opBulkRestore:'restoring {n} plots', opFieldCalc:'field edit on {n} plots',
+      tbDupTitle:'Find duplicates and overlaps',
+      tbDupNote:'Scans the visible files and selects the surplus copies so you can delete them. The first of each group stays unselected.',
+      tbDupGeom:'Same geometry', tbDupField:'Same field value', tbDupOverlap:'Overlapping across files',
+      tbDupRun:'Find and select surplus',
+      tbDupNone:'No duplicates found', tbDupFound:'Found <b>{n}</b> surplus plots in <b>{g}</b> groups — selected',
+      tbDupSelected:'Selected {n} duplicate plots', tbWorking:'Scanning...',
+      tbCalcTitle:'Field calculator',
+      tbCalcNote:'Edits one field across every selected plot at once.',
+      tbCalcSet:'Set value', tbCalcReplace:'Find and replace', tbCalcPrefix:'Add prefix', tbCalcSuffix:'Add suffix',
+      tbCalcAPh:'Value / text to find', tbCalcBPh:'Replacement text',
+      tbCalcRun:'Apply to selection', tbCalcTarget:'Will apply to <b>{n}</b> selected plots',
+      tbCalcNeedSelection:'Select some plots first', tbCalcNeedValue:'Enter the value first',
+      tbCalcConfirm:'Edit the field \"{field}\" on {n} plots?',
+      tbCalcDone:'Edited {n} plots', tbCalcNoChange:'No value changed',
+      tbStatsTitle:'Statistics', tbStatsRun:'Refresh',
+      tbScopeSelection:'Selected plots', tbScopeVisible:'Everything visible',
+      tbStatCount:'Plots', tbStatNumeric:'Numeric values', tbStatSum:'Sum',
+      tbStatMean:'Mean', tbStatMin:'Min', tbStatMax:'Max',
+      tbStatsEmpty:'No plots in the chosen scope',
+      tbExportTitle:'Export selection', tbExportNote:'Produces a KMZ with only the selected plots, leaving your working set untouched.',
+      tbExportRun:'Export selected only', tbExportNeedSelection:'Select some plots first', tbExportDone:'Exported {n} plots'
     }
   };
 
@@ -1076,6 +1199,25 @@
   const offlineNote = document.getElementById('offlineNote');
   const langBtn = document.getElementById('langBtn');
   const saveBtn = document.getElementById('saveBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  const toolboxBtn = document.getElementById('toolboxBtn');
+  const toolboxPanel = document.getElementById('toolboxPanel');
+  const tbDupMode = document.getElementById('tbDupMode');
+  const tbDupField = document.getElementById('tbDupField');
+  const tbDupResult = document.getElementById('tbDupResult');
+  const tbDupRun = document.getElementById('tbDupRun');
+  const tbCalcField = document.getElementById('tbCalcField');
+  const tbCalcOp = document.getElementById('tbCalcOp');
+  const tbCalcA = document.getElementById('tbCalcA');
+  const tbCalcB = document.getElementById('tbCalcB');
+  const tbCalcHint = document.getElementById('tbCalcHint');
+  const tbCalcRun = document.getElementById('tbCalcRun');
+  const tbStatsField = document.getElementById('tbStatsField');
+  const tbStatsScope = document.getElementById('tbStatsScope');
+  const tbStatsOut = document.getElementById('tbStatsOut');
+  const tbStatsRun = document.getElementById('tbStatsRun');
+  const tbExportSel = document.getElementById('tbExportSel');
   let saveTimer = null, sessionDirty = false, lastSavedAt = null;
   const filesBtn = document.getElementById('filesBtn');
   const filesPop = document.getElementById('filesPop');
@@ -1509,7 +1651,7 @@ ${inner}</table>
       mapLayerGroup.clearLayers();
       Object.keys(mapLayers).forEach(k=>delete mapLayers[k]);
     } else {
-      leafletMap = L.map('map', {zoomControl:true, boxZoom:false}).setView([26.63, 37.9], 12);
+      leafletMap = L.map('map', {zoomControl:true, boxZoom:false, preferCanvas:true}).setView([26.63, 37.9], 12);
       buildBasemaps();
       applyBasemap(baseKey, true);
       mapLayerGroup = L.layerGroup().addTo(leafletMap);
@@ -1968,11 +2110,13 @@ ${inner}</table>
       openPanel(pm);
     });
     container.querySelector('[data-act="del"]').addEventListener('click', ()=>{
-      pm.deleted = !pm.deleted;
+      const prev = pm.deleted;
+      pm.deleted = !prev;
       layer.closePopup();
       refreshPlacemarkVisual(pm);
       renderTable();
       markSession();
+      pushDeleteChange([{pm, prev}], pm.deleted, pm.deleted ? t('opDelete') : t('opRestore'));
       showToast(pm.deleted ? t('markedDeleted', {name: pm.name}) : t('restored', {name: pm.name}));
     });
     layer.bindPopup(container).openPopup();
@@ -2064,6 +2208,7 @@ ${inner}</table>
       lastAnchorIdx = null;
     }
     // header "select all shown" checkbox reflects the visible subset
+    if(toolboxPanel.classList.contains('open')){ updateCalcHint(); computeStats(); }
     const selAll = document.getElementById('selAllChk');
     if(selAll){
       const shownSelected = shownOrder.filter(i=>selected.has(i)).length;
@@ -2291,6 +2436,228 @@ ${inner}</table>
     batchSetDeleted(true);
   });
 
+  // ---------- Toolbox ----------
+  function fillToolboxFields(){
+    const keys = allFieldKeys();
+    const opts = `<option value="${NAME_KEY}">${escapeHtml(t('fieldName'))}</option>` +
+      keys.map(k=>`<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    const keep = (el, html)=>{ const v = el.value; el.innerHTML = html; if(v) el.value = v; };
+    keep(tbDupField, opts);
+    keep(tbCalcField, opts);
+    keep(tbStatsField, opts);
+    const idKey = keys.find(k=>/plot\s*id|parcel|رقم/i.test(k));
+    if(idKey && !tbDupField.value) tbDupField.value = idKey;
+    const areaKey = keys.find(k=>/area/i.test(k));
+    if(areaKey && !tbStatsField.value) tbStatsField.value = areaKey;
+  }
+
+  // rough centroid + area of a plot's outer rings, in degree units (only used for comparison)
+  function geomSignature(pm){
+    if(!pm.rings) return null;
+    let cx = 0, cy = 0, n = 0, area2 = 0;
+    pm.rings.forEach(part=>{
+      const ring = part[0];
+      for(let i = 0; i < ring.length; i++){
+        cy += ring[i][0]; cx += ring[i][1]; n++;
+        const j = (i + 1) % ring.length;
+        area2 += ring[i][1] * ring[j][0] - ring[j][1] * ring[i][0];
+      }
+    });
+    if(!n) return null;
+    return {cx: cx / n, cy: cy / n, area: Math.abs(area2 / 2), n};
+  }
+
+  function findDuplicates(mode){
+    const targets = activePlacemarks();
+    const extras = [];      // everything after the first member of each group
+    let groups = 0;
+    if(mode === 'field'){
+      const key = tbDupField.value;
+      const seen = new Map();
+      targets.forEach(pm=>{
+        const v = String(fieldValueOf(pm, key)).trim().toLowerCase();
+        if(!v) return;
+        if(!seen.has(v)) seen.set(v, []);
+        seen.get(v).push(pm);
+      });
+      seen.forEach(list=>{ if(list.length > 1){ groups++; extras.push(...list.slice(1)); } });
+    } else if(mode === 'geometry'){
+      const seen = new Map();
+      targets.forEach(pm=>{
+        const s = geomSignature(pm);
+        if(!s) return;
+        // 6 decimals ≈ 10cm, enough to call two plots the same geometry
+        const key = [s.cx.toFixed(6), s.cy.toFixed(6), s.area.toExponential(6), s.n].join('|');
+        if(!seen.has(key)) seen.set(key, []);
+        seen.get(key).push(pm);
+      });
+      seen.forEach(list=>{ if(list.length > 1){ groups++; extras.push(...list.slice(1)); } });
+    } else {
+      // overlap: plots from different files whose centroid falls inside another plot
+      const withBounds = targets.filter(pm=> mapLayers[pm.idx] && pm.rings);
+      const sigs = new Map(withBounds.map(pm=>[pm.idx, geomSignature(pm)]));
+      withBounds.forEach(pm=>{
+        const s = sigs.get(pm.idx);
+        if(!s) return;
+        const hit = withBounds.find(other=>
+          other !== pm && other.sourceId !== pm.sourceId &&
+          mapLayers[other.idx].getBounds().contains(L.latLng(s.cy, s.cx)) &&
+          pointInPlacemark(other, s.cy, s.cx));
+        if(hit) extras.push(pm);
+      });
+      groups = extras.length;
+    }
+    return {extras, groups};
+  }
+
+  tbDupMode.addEventListener('change', ()=>{
+    tbDupField.style.display = tbDupMode.value === 'field' ? 'block' : 'none';
+  });
+
+  tbDupRun.addEventListener('click', ()=>{
+    if(!placemarks.length){ showToast(t('loadFileFirst')); return; }
+    tbDupResult.textContent = t('tbWorking');
+    setTimeout(()=>{
+      const {extras, groups} = findDuplicates(tbDupMode.value);
+      if(!extras.length){
+        tbDupResult.innerHTML = `<span class="good">${escapeHtml(t('tbDupNone'))}</span>`;
+        showToast(t('tbDupNone'));
+        return;
+      }
+      const prev = selectedPlacemarks();
+      selected.clear();
+      prev.forEach(refreshPlacemarkVisual);
+      extras.forEach(pm=> setSelected(pm, true));
+      renderTable();
+      tbDupResult.innerHTML = t('tbDupFound', {n: extras.length, g: groups});
+      showToast(t('tbDupSelected', {n: extras.length}));
+    }, 30);
+  });
+
+  tbCalcOp.addEventListener('change', ()=>{
+    tbCalcB.style.display = tbCalcOp.value === 'replace' ? 'block' : 'none';
+    updateCalcHint();
+  });
+  function updateCalcHint(){
+    tbCalcHint.innerHTML = t('tbCalcTarget', {n: selected.size});
+  }
+
+  tbCalcRun.addEventListener('click', ()=>{
+    const targets = selectedPlacemarks().filter(plotVisible);
+    if(!targets.length){ showToast(t('tbCalcNeedSelection')); return; }
+    const key = tbCalcField.value, op = tbCalcOp.value;
+    const a = tbCalcA.value, b = tbCalcB.value;
+    if(op !== 'set' && !a){ showToast(t('tbCalcNeedValue')); return; }
+    if(!confirm(t('tbCalcConfirm', {n: targets.length, field: key === NAME_KEY ? t('fieldName') : key}))) return;
+
+    const items = [];
+    let touched = 0;
+    targets.forEach(pm=>{
+      const before = snapshotAttrs(pm);
+      const current = String(fieldValueOf(pm, key));
+      let next = current;
+      if(op === 'set') next = a;
+      else if(op === 'replace') next = current.split(a).join(b);
+      else if(op === 'prefix') next = a + current;
+      else if(op === 'suffix') next = current + a;
+      if(next === current) return;
+      if(key === NAME_KEY) pm.name = next;
+      else {
+        const f = pm.fields.find(x=>x.key === key);
+        if(f) f.val = next; else return;   // don't invent fields the placemark doesn't have
+      }
+      pm.dirty = true;
+      writePlacemarkToDom(pm);
+      items.push({pm, before, after: snapshotAttrs(pm)});
+      touched++;
+    });
+    if(!touched){ showToast(t('tbCalcNoChange')); return; }
+    pushAttrChange(items, t('opFieldCalc', {n: touched}));
+    renderTable();
+    markSession();
+    showToast(t('tbCalcDone', {n: touched}));
+  });
+
+  function computeStats(){
+    const key = tbStatsField.value;
+    const scope = tbStatsScope.value === 'selection' ? selectedPlacemarks().filter(plotVisible) : activePlacemarks();
+    const nums = [];
+    scope.forEach(pm=>{
+      const v = parseFloat(String(fieldValueOf(pm, key)).replace(/,/g, ''));
+      if(!isNaN(v)) nums.push(v);
+    });
+    const fmt = n => (Math.round(n * 100) / 100).toLocaleString(lang === 'ar' ? 'ar-SA' : 'en-US');
+    if(!scope.length){ tbStatsOut.innerHTML = `<div class="stats-empty">${escapeHtml(t('tbStatsEmpty'))}</div>`; return; }
+    const rows = [[t('tbStatCount'), scope.length.toLocaleString()]];
+    if(nums.length){
+      const sum = nums.reduce((s, v)=> s + v, 0);
+      rows.push([t('tbStatNumeric'), nums.length.toLocaleString()],
+                [t('tbStatSum'), fmt(sum)],
+                [t('tbStatMean'), fmt(sum / nums.length)],
+                [t('tbStatMin'), fmt(Math.min(...nums))],
+                [t('tbStatMax'), fmt(Math.max(...nums))]);
+    } else {
+      rows.push([t('tbStatNumeric'), '0']);
+    }
+    tbStatsOut.innerHTML = rows.map(([k, v])=>
+      `<span class="sk">${escapeHtml(k)}</span><span class="sv">${escapeHtml(String(v))}</span>`).join('');
+  }
+  tbStatsRun.addEventListener('click', computeStats);
+  tbStatsField.addEventListener('change', computeStats);
+  tbStatsScope.addEventListener('change', computeStats);
+
+  tbExportSel.addEventListener('click', async ()=>{
+    const chosen = selectedPlacemarks().filter(plotVisible);
+    if(!chosen.length){ showToast(t('tbExportNeedSelection')); return; }
+    try{
+      const keep = new Set();
+      const all = Array.from(xmlDoc.getElementsByTagName('Placemark'));
+      const idxOf = new Map(all.map((n, i)=>[n, i]));
+      chosen.forEach(pm=>{ const i = idxOf.get(pm.node); if(i !== undefined) keep.add(i); });
+
+      const clone = xmlDoc.cloneNode(true);
+      const cloneNodes = Array.from(clone.getElementsByTagName('Placemark'));
+      cloneNodes.forEach((n, i)=>{ if(!keep.has(i) && n.parentNode) n.parentNode.removeChild(n); });
+
+      let kmlText = new XMLSerializer().serializeToString(clone);
+      if(!kmlText.startsWith('<?xml')) kmlText = '<?xml version="1.0" encoding="UTF-8"?>\n' + kmlText;
+      const zip = new JSZip();
+      zip.file('doc.kml', kmlText);
+      const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = originalFileName + '_selection.kmz';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      showToast(t('tbExportDone', {n: chosen.length}));
+    }catch(err){
+      console.error(err);
+      showToast(t('exportError', {msg: err.message}));
+    }
+  });
+
+  function openToolbox(){
+    if(!placemarks.length){ showToast(t('loadFileFirst')); return; }
+    closePanel(); closeSelPanel();
+    fillToolboxFields();
+    tbDupField.style.display = tbDupMode.value === 'field' ? 'block' : 'none';
+    tbCalcB.style.display = tbCalcOp.value === 'replace' ? 'block' : 'none';
+    updateCalcHint();
+    computeStats();
+    toolboxPanel.classList.add('open');
+    overlay.classList.add('open');
+  }
+  function closeToolbox(){
+    toolboxPanel.classList.remove('open');
+    if(!panel.classList.contains('open') && !selPanel.classList.contains('open')) overlay.classList.remove('open');
+  }
+  toolboxBtn.addEventListener('click', openToolbox);
+  document.getElementById('toolboxClose').addEventListener('click', closeToolbox);
+  document.getElementById('toolboxDone').addEventListener('click', closeToolbox);
+  undoBtn.addEventListener('click', doUndo);
+  redoBtn.addEventListener('click', doRedo);
+
   // ---------- Batch actions ----------
   function batchSetDeleted(flag){
     const targets = selectedPlacemarks();
@@ -2302,9 +2669,11 @@ ${inner}</table>
     }
     if(flag && changing.length >= 20 &&
        !confirm(t('confirmBulkDelete', {n: changing.length}))) return;
+    const items = changing.map(p=>({pm:p, prev:p.deleted}));
     changing.forEach(p=>{ p.deleted = flag; refreshPlacemarkVisual(p); });
     renderTable();
     markSession();
+    pushDeleteChange(items, flag, flag ? t('opBulkDelete', {n: changing.length}) : t('opBulkRestore', {n: changing.length}));
     showToast(flag ? t('markedN', {n: changing.length}) : t('restoredN', {n: changing.length}));
   }
 
@@ -2393,6 +2762,89 @@ ${inner}</table>
     return pm.fields.some(f=> f.val.toLowerCase().includes(t) || f.key.toLowerCase().includes(t));
   }
 
+  // ---------- Writing attribute changes back into the KML DOM ----------
+  function writePlacemarkToDom(pm){
+    const ns = xmlDoc.documentElement.namespaceURI;
+    if(!pm.nameEl){
+      // some placemarks ship without a <name>; create one rather than dropping the edit
+      pm.nameEl = ns ? xmlDoc.createElementNS(ns, 'name') : xmlDoc.createElement('name');
+      pm.node.insertBefore(pm.nameEl, pm.node.firstChild);
+    }
+    pm.nameEl.textContent = pm.name;
+
+    // Only rebuild the description when we actually parsed fields out of it.
+    // Descriptions that aren't in the RCU table format would otherwise be
+    // replaced by an empty table — silently destroying the original content.
+    if(pm.descEl && pm.fields.length){
+      const newHtml = buildDescriptionHtml(pm.title, pm.fields);
+      while(pm.descEl.firstChild) pm.descEl.removeChild(pm.descEl.firstChild);
+      pm.descEl.appendChild(xmlDoc.createCDATASection(newHtml));
+    }
+  }
+
+  function snapshotAttrs(pm){
+    return {name: pm.name, fields: pm.fields.map(f=>({...f})), dirty: pm.dirty};
+  }
+
+  // ---------- Undo / redo ----------
+  const history = {stack: [], pos: -1, limit: 40};
+
+  function pushHistory(entry){
+    history.stack.splice(history.pos + 1);
+    history.stack.push(entry);
+    if(history.stack.length > history.limit) history.stack.shift();
+    history.pos = history.stack.length - 1;
+    updateHistoryButtons();
+  }
+
+  function updateHistoryButtons(){
+    undoBtn.disabled = history.pos < 0;
+    redoBtn.disabled = history.pos >= history.stack.length - 1;
+    undoBtn.title = history.pos >= 0 ? t('undoOf', {what: history.stack[history.pos].label}) : t('undo');
+    redoBtn.title = history.pos < history.stack.length - 1
+      ? t('redoOf', {what: history.stack[history.pos + 1].label}) : t('redo');
+  }
+
+  function doUndo(){
+    if(history.pos < 0){ showToast(t('nothingToUndo')); return; }
+    const e = history.stack[history.pos];
+    e.undo();
+    history.pos--;
+    updateHistoryButtons();
+    showToast(t('undone', {what: e.label}));
+  }
+  function doRedo(){
+    if(history.pos >= history.stack.length - 1){ showToast(t('nothingToRedo')); return; }
+    const e = history.stack[++history.pos];
+    e.redo();
+    updateHistoryButtons();
+    showToast(t('redone', {what: e.label}));
+  }
+
+  function pushDeleteChange(items, flag, label){
+    const apply = value => {
+      items.forEach(it=>{ it.pm.deleted = (value === null ? it.prev : value); refreshPlacemarkVisual(it.pm); });
+      renderTable(); markSession();
+    };
+    pushHistory({label, undo: ()=> apply(null), redo: ()=> apply(flag)});
+  }
+
+  function pushAttrChange(items, label){
+    if(!items.length) return;
+    const apply = which => {
+      items.forEach(it=>{
+        const s = it[which];
+        it.pm.name = s.name;
+        it.pm.fields = s.fields.map(f=>({...f}));
+        it.pm.dirty = s.dirty;
+        writePlacemarkToDom(it.pm);
+        refreshPlacemarkVisual(it.pm);
+      });
+      renderTable(); markSession();
+    };
+    pushHistory({label: label || t('opEdit'), undo: ()=> apply('before'), redo: ()=> apply('after')});
+  }
+
   // numeric-aware comparison so "Area" sorts as numbers, not text
   function compareForSort(a, b){
     const av = fieldValueOf(a, sortKey), bv = fieldValueOf(b, sortKey);
@@ -2475,10 +2927,12 @@ ${inner}</table>
     if(btn.dataset.act === 'edit'){
       openPanel(pm);
     } else if(btn.dataset.act === 'del'){
-      pm.deleted = !pm.deleted;
+      const prev = pm.deleted;
+      pm.deleted = !prev;
       renderTable();
       refreshPlacemarkVisual(pm);
       markSession();
+      pushDeleteChange([{pm, prev}], pm.deleted, pm.deleted ? t('opDelete') : t('opRestore'));
       showToast(pm.deleted ? t('markedDeleted', {name: pm.name}) : t('restored', {name: pm.name}));
     }
   });
@@ -2536,29 +2990,15 @@ ${inner}</table>
   panelSave.addEventListener('click', ()=>{
     const pm = placemarks.find(p=>p.idx===activeIndex);
     if(!pm) return;
+    const before = snapshotAttrs(pm);
     const changed = (pm.name !== draftName) ||
       JSON.stringify(pm.fields) !== JSON.stringify(draftFields);
     pm.name = draftName;
     pm.fields = draftFields;
     if(changed) pm.dirty = true;
 
-    // write straight into the live DOM node so export reflects it
-    if(!pm.nameEl){
-      // some placemarks ship without a <name>; create one rather than dropping the edit
-      const ns = xmlDoc.documentElement.namespaceURI;
-      pm.nameEl = ns ? xmlDoc.createElementNS(ns, 'name') : xmlDoc.createElement('name');
-      pm.node.insertBefore(pm.nameEl, pm.node.firstChild);
-    }
-    pm.nameEl.textContent = pm.name;
-
-    // Only rebuild the description when we actually parsed fields out of it.
-    // Descriptions that aren't in the RCU table format would otherwise be
-    // replaced by an empty table — silently destroying the original content.
-    if(pm.descEl && pm.fields.length){
-      const newHtml = buildDescriptionHtml(pm.title, pm.fields);
-      while(pm.descEl.firstChild) pm.descEl.removeChild(pm.descEl.firstChild);
-      pm.descEl.appendChild(xmlDoc.createCDATASection(newHtml));
-    }
+    writePlacemarkToDom(pm);
+    pushAttrChange([{pm, before, after: snapshotAttrs(pm)}]);
     closePanel();
     renderTable();
     refreshPlacemarkVisual(pm);
@@ -2586,6 +3026,7 @@ ${inner}</table>
     filesPop.classList.remove('open');
     filesBtn.style.display = 'none';
     mapFiles.style.display = 'none';
+    history.stack.length = 0; history.pos = -1; updateHistoryButtons();
     if(mapLayerGroup) mapLayerGroup.clearLayers();
     Object.keys(mapLayers).forEach(k=>delete mapLayers[k]);
     toolbar.style.display = 'none';
@@ -2616,6 +3057,7 @@ ${inner}</table>
     document.querySelectorAll('[data-i18n-html]').forEach(el=> el.innerHTML = t(el.dataset.i18nHtml));
     document.querySelectorAll('[data-i18n-title]').forEach(el=> el.title = t(el.dataset.i18nTitle));
     document.querySelectorAll('[data-i18n-ph]').forEach(el=> el.placeholder = t(el.dataset.i18nPh));
+    document.querySelectorAll('[data-i18n-opt]').forEach(el=> el.textContent = t(el.dataset.i18nOpt));
 
     // anything rendered from JS has to be rebuilt in the new language
     setSelectMode(selectMode);
@@ -2627,6 +3069,8 @@ ${inner}</table>
       buildMapLegend();
       renderSourceList();
       renderFilesPanel();
+      fillToolboxFields();
+      updateHistoryButtons();
       relabelFieldSelectors(keptField, keptPaste);
       updateFieldHint();
       updatePasteHint();
@@ -2784,11 +3228,18 @@ ${inner}</table>
     if(e.key === 'Escape'){
       if(panel.classList.contains('open')) closePanel();
       else if(selPanel.classList.contains('open')) closeSelPanel();
+      else if(toolboxPanel.classList.contains('open')) closeToolbox();
       else if(mapTool) setMapTool(null);
       else if(selected.size) clearSelection();
       return;
     }
     if(typing || !placemarks.length) return;
+    if((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')){
+      e.preventDefault();
+      if(e.shiftKey) doRedo(); else doUndo();
+      return;
+    }
+    if((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')){ e.preventDefault(); doRedo(); return; }
     if((e.key === 'Delete' || e.key === 'Backspace') && selected.size){
       e.preventDefault();
       batchSetDeleted(true);
