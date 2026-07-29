@@ -324,6 +324,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   .tiles-down .map-offline{display:block;}
   .tiles-down #map{background:#EFEAE0;}
   .map-basemaps button.active{background:var(--gold); color:var(--brown);}
+  .map-fillmode{top:100px;}
+  .map-fillmode button.active{background:var(--brown); color:var(--gold);}
   .map-popup{font-family:var(--sans); min-width:170px;}
   .map-popup .mp-title{font-weight:700; font-size:13px; margin-bottom:6px; color:var(--brown);}
   .map-popup .mp-actions{display:flex; gap:6px;}
@@ -645,6 +647,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     <button data-base="satellite" data-i18n="baseSatellite" data-i18n-title="baseSatelliteTip"></button>
     <button data-base="hybrid" data-i18n="baseHybrid" data-i18n-title="baseHybridTip"></button>
   </div>
+  <div class="map-tools map-fillmode" id="mapFillMode">
+    <button data-fill="filled" data-i18n="fillFilled" data-i18n-title="fillFilledTip"></button>
+    <button data-fill="outline" data-i18n="fillOutline" data-i18n-title="fillOutlineTip"></button>
+  </div>
   <div class="map-legend" id="mapLegend"></div>
   <div class="map-offline" id="offlineNote"></div>
   <div class="map-hint" id="mapHint"></div>
@@ -847,7 +853,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       confirmRemoveSource:'إزالة الملف «{name}» و {n} قطعة معه؟',
       removedSource:'تمت إزالة {name} ({n} قطعة)',
       allRemoved:'تمت إزالة كل الملفات',
-      tilesBlocked:'تعذّر تحميل خلفية الخريطة (لا يوجد اتصال بالإنترنت، أو الخلفيات محجوبة على هذا الرابط). القطع والتحديد والحذف تعمل بشكل طبيعي بدونها.'
+      tilesBlocked:'تعذّر تحميل خلفية الخريطة (لا يوجد اتصال بالإنترنت، أو الخلفيات محجوبة على هذا الرابط). القطع والتحديد والحذف تعمل بشكل طبيعي بدونها.',
+      fillFilled:'▦ ملء', fillFilledTip:'تعبئة القطع بلون فئتها كاملاً',
+      fillOutline:'▢ حدود', fillOutlineTip:'إظهار حدود المزارع فقط لتبقى صورة القمر الصناعي ظاهرة تحتها',
+      fillFilledOn:'عرض القطع بتعبئة كاملة',
+      fillOutlineOn:'عرض الحدود فقط — صورة الأرض ظاهرة تحتها'
     },
     en: {
       title:'KMZ Editor — RCU',
@@ -954,7 +964,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       confirmRemoveSource:'Remove the file "{name}" and its {n} plot(s)?',
       removedSource:'Removed {name} ({n} plots)',
       allRemoved:'All files removed',
-      tilesBlocked:'The map background could not load (no internet connection, or backgrounds are blocked on this link). Plots, selection and deletion all work without it.'
+      tilesBlocked:'The map background could not load (no internet connection, or backgrounds are blocked on this link). Plots, selection and deletion all work without it.',
+      fillFilled:'▦ Filled', fillFilledTip:'Fill each plot solidly with its category colour',
+      fillOutline:'▢ Outline', fillOutlineTip:'Show plot boundaries only, so the satellite imagery stays visible underneath',
+      fillFilledOn:'Showing plots filled',
+      fillOutlineOn:'Showing boundaries only — the ground stays visible'
     }
   };
 
@@ -999,6 +1013,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   const mapHint = document.getElementById('mapHint');
   const mapTools = document.getElementById('mapTools');
   const mapBasemaps = document.getElementById('mapBasemaps');
+  const mapFillMode = document.getElementById('mapFillMode');
   const offlineNote = document.getElementById('offlineNote');
   const langBtn = document.getElementById('langBtn');
   const filesBtn = document.getElementById('filesBtn');
@@ -1044,6 +1059,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   let mapTool = null;           // armed drag tool on the map: null | 'rect' | 'lasso' | 'brush'
   let legendGroups = [];        // legend rows grouped by land-use label + colour
   let tileErrors = 0;           // failed basemap tile loads for the active source
+  // how plots are painted: 'auto' follows the basemap (outline over imagery), or force one
+  let fillMode = 'auto';
+  try{ fillMode = localStorage.getItem('kmzEditorFill') || 'auto'; }catch(e){}
+  if(['auto','filled','outline'].indexOf(fillMode) === -1) fillMode = 'auto';
   let basemaps = {};            // streets | satellite | hybrid
   let baseKey = 'streets';
   try{ baseKey = localStorage.getItem('kmzEditorBasemap') || 'streets'; }catch(e){}
@@ -1489,6 +1508,24 @@ ${inner}</table>
     if(!btn || !leafletMap) return;
     if(btn.dataset.base === baseKey) return;
     applyBasemap(btn.dataset.base);
+    // in auto mode the paint style follows the basemap
+    if(fillMode === 'auto'){ syncFillButtons(); refreshAllMapVisuals(); }
+  });
+
+  function syncFillButtons(){
+    const active = effectiveFill();
+    Array.from(mapFillMode.querySelectorAll('button')).forEach(b=>
+      b.classList.toggle('active', b.dataset.fill === active));
+  }
+
+  mapFillMode.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-fill]');
+    if(!btn) return;
+    fillMode = btn.dataset.fill;           // an explicit pick stops following the basemap
+    try{ localStorage.setItem('kmzEditorFill', fillMode); }catch(err){}
+    syncFillButtons();
+    refreshAllMapVisuals();
+    showToast(fillMode === 'outline' ? t('fillOutlineOn') : t('fillFilledOn'));
   });
 
   // ---------- Geometry helpers for lasso / brush hit-testing ----------
@@ -1738,23 +1775,43 @@ ${inner}</table>
     layer.bindPopup(container).openPopup();
   }
 
+  // 'auto' shows boundaries over imagery (so the farms stay visible) and solid fills on the street map
+  function effectiveFill(){
+    if(fillMode !== 'auto') return fillMode;
+    return baseKey === 'streets' ? 'filled' : 'outline';
+  }
+
   function refreshPlacemarkVisual(pm){
     const layer = mapLayers[pm.idx];
     if(!layer) return;
     const style = styleColorMap[pm.styleId] || {fill:DEFAULT_FILL, line:DEFAULT_LINE};
     const matches = matchesSearch(pm);
+    const outline = effectiveFill() === 'outline';
+    // never drop fill to a flat 0: a fully transparent interior stops catching clicks
+    const faint = 0.08;
     if(selected.has(pm.idx)){
       // selection always wins visually so the group being acted on is unmistakable
       layer.setStyle({
-        color:'#7A5F2A', weight:3, opacity:1,
+        color:'#7A5F2A', weight: outline ? 4 : 3, opacity:1,
         fillColor: pm.deleted ? '#B84A3E' : '#BA9863',
-        fillOpacity: pm.deleted ? .25 : .6,
+        fillOpacity: outline ? (pm.deleted ? .18 : .3) : (pm.deleted ? .25 : .6),
         dashArray: pm.deleted ? '5,5' : null
       });
       return;
     }
     if(pm.deleted){
-      layer.setStyle({color:'#B84A3E', weight:2, opacity:.9, fillColor:'#B84A3E', fillOpacity:.12, dashArray:'5,5'});
+      layer.setStyle({color:'#B84A3E', weight:2, opacity:.9, fillColor:'#B84A3E',
+                      fillOpacity: outline ? faint : .12, dashArray:'5,5'});
+    } else if(outline){
+      // stroke in the category's own fill colour — the KML line colour is usually near-black
+      layer.setStyle({
+        color: style.fill.hex,
+        weight: pm.dirty ? 3.5 : 2.5,
+        opacity: matches ? 1 : 0.12,
+        fillColor: style.fill.hex,
+        fillOpacity: matches ? faint : 0.02,
+        dashArray: null
+      });
     } else if(pm.dirty){
       layer.setStyle({color:'#BA9863', weight:2, opacity:1, fillColor:style.fill.hex, fillOpacity:style.fill.alpha, dashArray:null});
     } else {
@@ -2343,6 +2400,7 @@ ${inner}</table>
   // reflect the remembered basemap before the map itself is built
   Array.from(mapBasemaps.querySelectorAll('button')).forEach(b=>
     b.classList.toggle('active', b.dataset.base === baseKey));
+  syncFillButtons();
 
   // ---------- Keyboard shortcuts ----------
   document.addEventListener('keydown', (e)=>{
