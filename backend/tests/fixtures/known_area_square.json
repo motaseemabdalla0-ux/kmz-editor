@@ -1,0 +1,14 @@
+{
+  "id": "known-100m-square",
+  "_note": "Approximately 100m x 100m at ~26.6N, 37.9E (AlUla). Coordinates derived from local-degree-to-metre conversion, so the expected area is a tolerance band (9900-10100 m2), not an exact value — see test_measure.py.",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [37.9000000, 26.6000000],
+      [37.9010048, 26.6000000],
+      [37.9010048, 26.6008999],
+      [37.9000000, 26.6008999],
+      [37.9000000, 26.6000000]
+    ]]
+  }
+}

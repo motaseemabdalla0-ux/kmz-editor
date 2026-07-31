@@ -1,0 +1,11 @@
+# Python (backend/)
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.env
+
+# Editor/OS noise
+.DS_Store

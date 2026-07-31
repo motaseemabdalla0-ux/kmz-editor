@@ -1,0 +1,23 @@
+# KEYMAP GIS Service — Phase 1 dependencies.
+#
+# Notably absent: GDAL / fiona / pyogrio. GeoPandas' core geometry
+# operations (GeoDataFrame, sjoin, overlay, area, distance, to_crs) need
+# only shapely + pyproj + pandas, NOT the GDAL C library — GDAL is only
+# required for geopandas.read_file()/to_file() (format I/O), and Phase 1
+# has zero file-upload endpoints (geometry arrives as JSON, not files).
+# This was flagged as a packaging risk in the architecture plan; it turns
+# out not to apply yet. See ARCHITECTURE.md "GDAL is not a Phase 1
+# runtime dependency" for the full explanation and when this changes
+# (Shapefile import, a later phase).
+
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.32,<1.0
+pydantic>=2.9,<3.0
+pydantic-settings>=2.5,<3.0
+
+shapely>=2.0,<3.0
+geopandas>=1.0,<2.0
+pyproj>=3.6,<4.0
+
+pytest>=8.3,<9.0
+httpx>=0.27,<1.0
