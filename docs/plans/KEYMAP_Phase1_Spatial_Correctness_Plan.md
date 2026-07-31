@@ -1,7 +1,7 @@
 # KEYMAP Phase 1 — Spatial Correctness Foundation
 ## Technical Design & Implementation Plan
 
-**Status:** 🟡 Awaiting approval — no application code has been modified to produce this plan
+**Status:** 🔴 SUPERSEDED — the user explicitly chose Option B (Python backend, Shapely/GeoPandas/GDAL/PROJ) instead of the JS-native path this document defaulted to. See [KEYMAP_Phase1_Backend_Architecture_Plan.md](./KEYMAP_Phase1_Backend_Architecture_Plan.md) for the current plan. Kept here for decision-history traceability, not as an active design.
 **Scope:** Spatial engine correctness only. No AI, no auth/multi-user, no 3D, no automation — per explicit instruction, those remain later phases from the [Phase 0 Improvement Report](./KEYMAP_Geospatial_Intelligence_Improvement_Report.md).
 **Depends on:** One architecture decision, addressed in §0 below, defaulted per auto-mode rules because it went unanswered.
 
