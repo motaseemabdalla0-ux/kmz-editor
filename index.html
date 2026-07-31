@@ -1210,6 +1210,105 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     font-family:var(--sans); font-weight:800; font-size:11px;
     border:2px solid rgba(11,18,32,.75); box-shadow:var(--shadow-1);
   }
+
+  /* ---- refined brand mark ---- */
+  .km-mark{
+    width:32px; height:32px; flex-shrink:0; border-radius:9px;
+    background:linear-gradient(155deg, var(--gold-hi) 0%, var(--gold) 55%, #9c7a2e 100%);
+    display:grid; place-items:center; color:#141005;
+    box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 2px 6px rgba(0,0,0,.35);
+    position:relative; overflow:hidden;
+  }
+  .km-mark::after{
+    content:''; position:absolute; inset:0; border-radius:inherit;
+    background:linear-gradient(155deg, rgba(255,255,255,.35), transparent 45%);
+    pointer-events:none;
+  }
+  .km-mark svg{width:19px; height:19px; position:relative; z-index:1;}
+
+  /* ---- collapsible cards ---- */
+  .km-card-head{cursor:pointer; user-select:none;}
+  .km-card-collapse{
+    background:transparent !important; border:none !important;
+    color:var(--text-3) !important; padding:2px !important;
+    display:flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:5px; flex-shrink:0;
+    transition:transform .2s var(--ease), color .16s var(--ease), background .16s var(--ease);
+  }
+  .km-card-collapse:hover{background:rgba(255,255,255,.08) !important; color:var(--text) !important;}
+  .km-card-collapse svg{width:14px; height:14px;}
+  .km-card.collapsed .km-card-collapse{transform:rotate(-90deg);}
+  [dir=rtl] .km-card.collapsed .km-card-collapse{transform:rotate(90deg);}
+  .km-card.collapsed .km-card-body{display:none;}
+  .km-card.collapsed{flex-shrink:0;}
+  .km-ai-head{cursor:pointer; user-select:none;}
+  .km-card.collapsed .km-ai-input,
+  .km-card.collapsed .km-ai-chips,
+  .km-card.collapsed .km-ai-out{display:none;}
+
+  /* ---- panel visibility: hidden panels are removed from layout entirely ---- */
+  .km-panel-off{display:none !important;}
+
+  /* ---- Panels (view) menu ---- */
+  .km-panels-wrap{position:relative;}
+  .km-panels-pop{
+    display:none;
+    position:absolute; top:calc(100% + 8px); inset-inline-end:0;
+    width:252px; z-index:1300;
+    background:var(--surface-2); border:1px solid var(--hairline-2);
+    border-radius:var(--radius); box-shadow:var(--shadow-3);
+    padding:8px;
+  }
+  .km-panels-pop.open{display:block;}
+  .km-panels-head{
+    font-size:10.5px; font-weight:700; color:var(--text-3);
+    text-transform:uppercase; letter-spacing:.5px;
+    padding:4px 6px 8px; border-bottom:1px solid var(--hairline); margin-bottom:4px;
+  }
+  .km-panel-row{
+    display:flex; align-items:center; gap:9px;
+    padding:7px 6px; border-radius:7px; cursor:pointer;
+  }
+  .km-panel-row:hover{background:rgba(255,255,255,.05);}
+  .km-panel-row .ico{color:var(--text-3); flex-shrink:0;}
+  .km-panel-row .ico svg{width:15px; height:15px;}
+  .km-panel-row span.lbl{flex:1; font-size:12px; color:var(--text-2);}
+  .km-panel-row input[type=checkbox]{accent-color:var(--gold); width:15px; height:15px;}
+  .km-panels-foot{
+    border-top:1px solid var(--hairline); margin-top:6px; padding-top:6px;
+    display:flex; gap:6px;
+  }
+  .km-panels-foot button{
+    flex:1; background:rgba(255,255,255,.05); border:1px solid var(--hairline);
+    color:var(--text-2); border-radius:6px; font-size:10.5px; font-weight:600;
+    padding:6px; cursor:pointer; font-family:var(--sans);
+  }
+  .km-panels-foot button:hover{border-color:var(--gold); color:var(--gold); background:var(--gold-dim);}
+
+  /* small dismiss (x) buttons on the floating map toolbars, so they can be
+     closed with one click without opening the Panels menu */
+  .map-tools.km-dismissable{padding-inline-end:4px;}
+  .km-dismiss{
+    border:none; background:transparent; color:var(--text-3);
+    width:20px; height:20px; display:flex; align-items:center; justify-content:center;
+    border-radius:6px; cursor:pointer; margin-inline-start:1px; align-self:center;
+  }
+  .km-dismiss:hover{background:rgba(255,255,255,.08); color:var(--danger);}
+  .km-dismiss svg{width:12px; height:12px;}
+
+  /* a slim restore handle appears at the map edge when draw tools are hidden */
+  .km-restore-tab{
+    position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:415;
+    display:none; align-items:center; gap:5px;
+    background:var(--glass); backdrop-filter:blur(var(--blur));
+    -webkit-backdrop-filter:blur(var(--blur));
+    border:1px solid var(--hairline); border-radius:99px;
+    padding:6px 11px; cursor:pointer; color:var(--text-2);
+    font-family:var(--sans); font-size:10.5px; font-weight:600;
+  }
+  .km-restore-tab:hover{border-color:var(--gold); color:var(--gold);}
+  .km-restore-tab svg{width:13px; height:13px;}
+  .km-restore-tab.show{display:flex;}
 </style>
 </head>
 <body>
@@ -1217,7 +1316,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 <div class="km-app">
   <aside class="km-sidebar" id="kmSidebar">
     <div class="km-brand">
-      <span class="km-mark" data-icon="pin"></span>
+      <span class="km-mark">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2.2c-4.42 0-8 3.5-8 7.85 0 5.8 8 11.75 8 11.75s8-5.95 8-11.75c0-4.35-3.58-7.85-8-7.85z" fill="currentColor"/>
+          <path d="M7.6 8.4h8.8M8.5 11h6.9M9.4 13.6h5.2" stroke="#141005" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </span>
       <span class="km-brand-text">
         <span class="brand">KEY<em>MAP</em></span>
         <span class="tagline" data-i18n="tagline"></span>
@@ -1261,6 +1365,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   <button class="btn btn-ghost btn-icon" id="undoBtn" data-icon="undo" disabled>↶</button>
   <button class="btn btn-ghost btn-icon" id="redoBtn" data-icon="redo" disabled>↷</button>
   <button class="btn btn-gold" id="saveBtn" data-icon="save" style="display:none;"></button>
+  <div class="km-panels-wrap">
+    <button class="btn btn-ghost btn-icon" id="panelsMenuBtn" data-icon="viewToggle" data-i18n-title="panelsMenuTip"></button>
+    <div class="km-panels-pop" id="kmPanelsPop">
+      <div class="km-panels-head" data-i18n="panelsMenuHead"></div>
+      <div id="kmPanelsList"></div>
+      <div class="km-panels-foot">
+        <button id="kmPanelsShowAll" data-i18n="showAll"></button>
+        <button id="kmPanelsReset" data-i18n="panelsReset"></button>
+      </div>
+    </div>
+  </div>
   <button class="btn btn-ghost" id="langBtn" data-icon="globe" title="Switch language / تبديل اللغة">EN</button>
   <button class="btn btn-ghost" id="resetBtn" data-icon="reset" data-i18n="resetAll" disabled></button>
   <button class="btn btn-gold" id="exportBtn" data-icon="download" data-i18n="exportKmz" disabled></button>
@@ -1271,24 +1386,29 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     <div class="km-workspace">
       <aside class="km-rail km-rail-left" id="kmRailLeft">
-        <div class="km-card">
-          <div class="km-card-head">
+        <div class="km-card" data-card-id="layers">
+          <div class="km-card-head" data-card-toggle>
             <h3><span class="ico" data-icon-inline="layers"></span><span data-i18n="panelLayers"></span></h3>
             <button data-vis="all" data-files-bulk data-i18n="showAll"></button>
             <button data-vis="none" data-files-bulk data-i18n="hideAll"></button>
+            <button class="km-card-collapse" data-icon-inline="chevronDown"></button>
           </div>
           <div class="km-card-body tight" id="kmFilesHost"></div>
         </div>
-        <div class="km-card">
-          <div class="km-card-head">
+        <div class="km-card" data-card-id="categories">
+          <div class="km-card-head" data-card-toggle>
             <h3><span class="ico" data-icon-inline="palette"></span><span data-i18n="panelCategories"></span></h3>
             <button data-cat="all" data-legend-bulk data-i18n="showAll"></button>
             <button data-cat="none" data-legend-bulk data-i18n="hideAll"></button>
+            <button class="km-card-collapse" data-icon-inline="chevronDown"></button>
           </div>
           <div class="km-card-body tight" id="kmLegendHost"></div>
         </div>
-        <div class="km-card">
-          <div class="km-card-head"><h3><span class="ico" data-icon-inline="map"></span><span data-i18n="panelBasemap"></span></h3></div>
+        <div class="km-card" data-card-id="basemap">
+          <div class="km-card-head" data-card-toggle>
+            <h3><span class="ico" data-icon-inline="map"></span><span data-i18n="panelBasemap"></span></h3>
+            <button class="km-card-collapse" data-icon-inline="chevronDown"></button>
+          </div>
           <div class="km-card-body tight" id="kmBasemapHost"></div>
         </div>
       </aside>
@@ -1313,27 +1433,32 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </div>
 <div class="map-wrap" id="mapWrap" style="display:none;">
   <div id="map"></div>
-  <div class="map-tools" id="mapTools">
+  <div class="km-restore-tab" id="kmRestoreTab" data-icon-inline="move"><span data-i18n="showTools"></span></div>
+  <div class="map-tools km-dismissable" id="mapTools">
     <button data-tool="" class="active" data-icon="move" data-i18n="toolPan" data-i18n-title="toolPanTip"></button>
     <button data-tool="rect" data-icon="rect" data-i18n="toolRect" data-i18n-title="toolRectTip"></button>
     <button data-tool="lasso" data-icon="lasso" data-i18n="toolLasso" data-i18n-title="toolLassoTip"></button>
     <button data-tool="brush" data-icon="brush" data-i18n="toolBrush" data-i18n-title="toolBrushTip"></button>
     <button data-tool="measure" data-icon="ruler" data-i18n="toolMeasure" data-i18n-title="toolMeasureTip"></button>
+    <button class="km-dismiss" data-panel-close="drawTools" data-icon-inline="xSmall" data-i18n-title="hideThis"></button>
   </div>
-  <div class="map-tools map-basemaps" id="mapBasemaps">
+  <div class="map-tools map-basemaps km-dismissable" id="mapBasemaps">
     <button data-base="streets" class="active" data-icon="map" data-i18n="baseStreets" data-i18n-title="baseStreetsTip"></button>
     <button data-base="satellite" data-icon="satellite" data-i18n="baseSatellite" data-i18n-title="baseSatelliteTip"></button>
     <button data-base="hybrid" data-icon="layers" data-i18n="baseHybrid" data-i18n-title="baseHybridTip"></button>
+    <button class="km-dismiss" data-panel-close="basemaps" data-icon-inline="xSmall" data-i18n-title="hideThis"></button>
   </div>
   <div class="km-mapctl" id="kmMapCtl">
     <button id="kmCompass" class="km-compass" title="north"></button>
     <button id="kmLocate" title="fit"></button>
     <button id="kmMiniToggle" title="minimap"></button>
     <button id="kmLabelToggle" title="labels">A</button>
+    <button class="km-dismiss" data-panel-close="mapCtl" data-icon-inline="xSmall" data-i18n-title="hideThis" style="width:34px; height:20px; border-radius:7px;"></button>
   </div>
-  <div class="map-tools map-fillmode" id="mapFillMode">
+  <div class="map-tools map-fillmode km-dismissable" id="mapFillMode">
     <button data-fill="filled" data-icon="fill" data-i18n="fillFilled" data-i18n-title="fillFilledTip"></button>
     <button data-fill="outline" data-icon="outline" data-i18n="fillOutline" data-i18n-title="fillOutlineTip"></button>
+    <button class="km-dismiss" data-panel-close="fillMode" data-icon-inline="xSmall" data-i18n-title="hideThis"></button>
   </div>
   
   <div class="map-offline" id="offlineNote"></div>
@@ -1359,19 +1484,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       </div>
 
       <aside class="km-rail km-rail-right" id="kmRailRight">
-        <div class="km-card">
-          <div class="km-card-head"><h3><span class="ico" data-icon-inline="info"></span><span data-i18n="panelFeature"></span></h3></div>
+        <div class="km-card" data-card-id="feature">
+          <div class="km-card-head" data-card-toggle>
+            <h3><span class="ico" data-icon-inline="info"></span><span data-i18n="panelFeature"></span></h3>
+            <button class="km-card-collapse" data-icon-inline="chevronDown"></button>
+          </div>
           <div class="km-card-body" id="kmFeature"></div>
         </div>
-        <div class="km-card">
-          <div class="km-card-head"><h3><span class="ico" data-icon-inline="stats"></span><span data-i18n="panelBreakdown"></span></h3></div>
+        <div class="km-card" data-card-id="breakdown">
+          <div class="km-card-head" data-card-toggle>
+            <h3><span class="ico" data-icon-inline="stats"></span><span data-i18n="panelBreakdown"></span></h3>
+            <button class="km-card-collapse" data-icon-inline="chevronDown"></button>
+          </div>
           <div class="km-card-body tight" id="kmBreakdown"></div>
         </div>
-        <div class="km-card" style="margin-top:auto;">
+        <div class="km-card" style="margin-top:auto;" data-card-id="ai">
           <div class="km-ai">
-            <div class="km-ai-head">
+            <div class="km-ai-head" data-card-toggle>
               <span class="ico" data-icon-inline="sparkles"></span>
               <span>KEYMAP AI</span><span class="km-ai-tag" data-i18n="aiTag"></span>
+              <button class="km-card-collapse" data-icon-inline="chevronDown" style="margin-inline-start:auto;"></button>
             </div>
             <div class="km-ai-input">
               <input type="text" id="kmAiInput" data-i18n-ph="aiPlaceholder">
@@ -1721,6 +1853,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       mergedInto:'تم دمج {n} قطعة في «{name}»',
       sortTip:'اضغط للترتيب حسب هذا العمود',
       tagline:'منصة الذكاء الجغرافي',
+      panelsMenuTip:'إظهار/إخفاء أقسام الواجهة',
+      panelsMenuHead:'الأقسام المرئية',
+      panelsReset:'استعادة الافتراضي',
+      panelToggleKpis:'شريط المؤشرات',
+      panelToggleLayers:'الطبقات والفئات',
+      panelToggleInspector:'لوحة التفاصيل',
+      panelToggleToolbar:'شريط الأدوات',
+      panelToggleDraw:'أدوات الرسم',
+      panelToggleBasemap:'مبدّل الخلفية',
+      panelToggleFill:'وضع التعبئة',
+      panelToggleMapCtl:'أدوات الخريطة',
+      showTools:'إظهار أدوات الخريطة',
+      hideThis:'إخفاء هذا الشريط',
       toolMeasure:'قياس',
       toolMeasureTip:'اضغط لإضافة نقاط — أعد الضغط على الزر لتبديل مسافة/مساحة/زاوية',
       measHint:'القياس: اضغط على الخريطة لإضافة نقاط',
@@ -1980,6 +2125,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       mergedInto:'Merged {n} plots into \"{name}\"',
       sortTip:'Click to sort by this column',
       tagline:'Geospatial Intelligence',
+      panelsMenuTip:'Show or hide interface panels',
+      panelsMenuHead:'Visible panels',
+      panelsReset:'Reset to default',
+      panelToggleKpis:'KPI strip',
+      panelToggleLayers:'Layers & categories',
+      panelToggleInspector:'Inspector panel',
+      panelToggleToolbar:'Toolbar',
+      panelToggleDraw:'Draw tools',
+      panelToggleBasemap:'Basemap switcher',
+      panelToggleFill:'Fill mode',
+      panelToggleMapCtl:'Map controls',
+      showTools:'Show map tools',
+      hideThis:'Hide this bar',
       toolMeasure:'Measure',
       toolMeasureTip:'Click to add points — press again to cycle distance/area/angle',
       measHint:'Measure: click the map to add points',
@@ -4037,7 +4195,7 @@ ${inner}</table>
     download:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19h14"/>',
     globe:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 2.4 14.4 0 17M12 3.5c-2.4 2.6-2.4 14.4 0 17"/>',
     search:'<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
-    pointer:'<path d="m5 4 6.5 16 2.4-6.6 6.6-2.4z"/>',
+    pointer:'<path d="m5 4 6.5 16 2.4-6.6 6.6-2.4z" fill="currentColor" stroke-linejoin="round"/>',
     checkSquare:'<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="m8.5 12 2.5 2.5 5-5"/>',
     sliders:'<path d="M5 7h9M17 7h2M5 17h3M11 17h8"/><circle cx="15.5" cy="7" r="2"/><circle cx="9.5" cy="17" r="2"/>',
     toolbox:'<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8.5 8V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/>',
@@ -4351,11 +4509,11 @@ ${inner}</table>
     pin:'<path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>',
     chevrons:'<path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/>',
     settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6h0A1.6 1.6 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v0a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
-    palette:'<circle cx="12" cy="12" r="8.5"/><circle cx="9" cy="9.5" r="1.1" fill="currentColor"/><circle cx="14.5" cy="9.5" r="1.1" fill="currentColor"/><circle cx="9.5" cy="15" r="1.1" fill="currentColor"/>',
+    palette:'<path d="M12 3.2a9 9 0 1 0 3.4 17.3c1-.4 1.2-1.7.3-2.3l-.5-.3a1.7 1.7 0 0 1 .9-3.1H18a3 3 0 0 0 3-3c0-4.9-4-8.6-9-8.6z"/><circle cx="7.6" cy="10.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="10.2" cy="7.2" r="1.15" fill="currentColor" stroke="none"/><circle cx="14.6" cy="7.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="16.6" cy="11.2" r="1.15" fill="currentColor" stroke="none"/>',
     info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.7v.4"/>',
     sparkles:'<path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 15.5 19.4 18l2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9z"/>',
     send:'<path d="M4 12 20.5 4 13 20l-2-6z"/><path d="m11 14 9-10"/>',
-    compass:'<circle cx="12" cy="12" r="8.5"/><path d="m15 9-2 5-4 1 2-5z" fill="currentColor" stroke="none"/>',
+    compass:'<circle cx="12" cy="12" r="8.5"/><path d="M12 2.7v2M12 19.3v2M2.7 12h2M19.3 12h2"/><path d="m14.6 9.4-1.7 4.8-4.8 1.7 1.7-4.8z" fill="currentColor" stroke="none"/>',
     locate:'<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22"/>'
   });
 
@@ -4648,6 +4806,7 @@ ${inner}</table>
     renderBasemapCard();
     reseatPanels();
     renderAiChips();
+    if(typeof renderPanelsMenu === 'function') renderPanelsMenu();
     paintIcons();
     paintInlineIcons();
     if(!inspected || !placemarks.includes(inspected)) showFeature(null);
@@ -5202,6 +5361,136 @@ ${inner}</table>
     renderBookmarks();
     paintIcons();
   });
+
+
+  // ================= KEYMAP panel visibility system =================
+  // Two independent layers of "hide when not needed, show on demand":
+  //  1) whole-panel visibility (KPI strip, rails, toolbar, map toolbars) via
+  //     the Panels menu in the header, persisted in localStorage
+  //  2) per-card collapse (chevron on each card header) that just hides the
+  //     body and keeps the title strip, persisted separately
+
+  Object.assign(ICONS, {
+    viewToggle:'<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 9.7h17M9.7 9.7V20.5"/>',
+    chevronDown:'<path d="m6 9.5 6 6 6-6"/>',
+    xSmall:'<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>'
+  });
+
+  const PANEL_DEFS = [
+    {id:'kpis',      el:'kmKpis',       icon:'stats',    label:'panelToggleKpis'},
+    {id:'railLeft',  el:'kmRailLeft',   icon:'layers',   label:'panelToggleLayers'},
+    {id:'railRight', el:'kmRailRight',  icon:'info',     label:'panelToggleInspector'},
+    {id:'toolbar',   el:'toolbar',      icon:'sliders',  label:'panelToggleToolbar'},
+    {id:'drawTools', el:'mapTools',     icon:'move',     label:'panelToggleDraw'},
+    {id:'basemaps',  el:'mapBasemaps',  icon:'map',      label:'panelToggleBasemap'},
+    {id:'fillMode',  el:'mapFillMode',  icon:'fill',     label:'panelToggleFill'},
+    {id:'mapCtl',    el:'kmMapCtl',     icon:'compass',  label:'panelToggleMapCtl'}
+  ];
+
+  let panelVis = {};
+  try{ panelVis = JSON.parse(localStorage.getItem('keymapPanelVis') || '{}'); }catch(e){}
+  function isPanelOn(id){ return panelVis[id] !== false; }
+  function savePanelVis(){ try{ localStorage.setItem('keymapPanelVis', JSON.stringify(panelVis)); }catch(e){} }
+
+  const kmRestoreTab = document.getElementById('kmRestoreTab');
+
+  function applyPanelVisibility(){
+    PANEL_DEFS.forEach(def=>{
+      const el = document.getElementById(def.el);
+      if(!el) return;
+      el.classList.toggle('km-panel-off', !isPanelOn(def.id));
+    });
+    // one small tab brings every hidden map toolbar back at once
+    const mapToolIds = ['drawTools','basemaps','fillMode','mapCtl'];
+    const anyMapToolHidden = mapToolIds.some(id=> !isPanelOn(id));
+    if(kmRestoreTab) kmRestoreTab.classList.toggle('show', anyMapToolHidden);
+    if(leafletMap) setTimeout(()=> leafletMap.invalidateSize(), 240);
+  }
+
+  function setPanel(id, on){
+    panelVis[id] = on;
+    savePanelVis();
+    applyPanelVisibility();
+    renderPanelsMenu();
+  }
+
+  function renderPanelsMenu(){
+    const host = document.getElementById('kmPanelsList');
+    if(!host) return;
+    host.innerHTML = PANEL_DEFS.map(def=>`
+      <div class="km-panel-row" data-panel-row="${def.id}">
+        <span class="ico">${svgIcon(def.icon)}</span>
+        <span class="lbl">${escapeHtml(t(def.label))}</span>
+        <input type="checkbox" data-panel-check="${def.id}" ${isPanelOn(def.id) ? 'checked' : ''}>
+      </div>`).join('');
+  }
+
+  document.getElementById('kmPanelsList')?.addEventListener('click', (e)=>{
+    const row = e.target.closest('.km-panel-row');
+    if(!row) return;
+    const id = row.dataset.panelRow;
+    const box = row.querySelector('input');
+    const on = (e.target === box) ? box.checked : !isPanelOn(id);
+    if(e.target !== box) box.checked = on;
+    setPanel(id, on);
+  });
+
+  document.getElementById('kmPanelsShowAll')?.addEventListener('click', ()=>{
+    PANEL_DEFS.forEach(def=> panelVis[def.id] = true);
+    savePanelVis(); applyPanelVisibility(); renderPanelsMenu();
+  });
+  document.getElementById('kmPanelsReset')?.addEventListener('click', ()=>{
+    panelVis = {}; savePanelVis(); applyPanelVisibility(); renderPanelsMenu();
+  });
+
+  const panelsMenuBtn = document.getElementById('panelsMenuBtn');
+  const panelsPop = document.getElementById('kmPanelsPop');
+  panelsMenuBtn?.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    panelsPop.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(panelsPop && !panelsPop.contains(e.target) && e.target !== panelsMenuBtn) panelsPop.classList.remove('open');
+  });
+
+  kmRestoreTab?.addEventListener('click', ()=>{
+    ['drawTools','basemaps','fillMode','mapCtl'].forEach(id=> panelVis[id] = true);
+    savePanelVis(); applyPanelVisibility(); renderPanelsMenu();
+  });
+
+  // quick × dismiss buttons on the floating map toolbars themselves
+  document.querySelectorAll('[data-panel-close]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      setPanel(btn.dataset.panelClose, false);
+    });
+  });
+
+  // ---------- per-card collapse ----------
+  let cardCollapse = {};
+  try{ cardCollapse = JSON.parse(localStorage.getItem('keymapCardCollapse') || '{}'); }catch(e){}
+  function applyCardCollapse(){
+    document.querySelectorAll('.km-card[data-card-id]').forEach(card=>{
+      card.classList.toggle('collapsed', !!cardCollapse[card.dataset.cardId]);
+    });
+  }
+  document.querySelectorAll('.km-card-head[data-card-toggle], .km-ai-head[data-card-toggle]').forEach(head=>{
+    head.addEventListener('click', (e)=>{
+      if(e.target.closest('button:not(.km-card-collapse)')) return;   // let action buttons work normally
+      const card = head.closest('.km-card');
+      const id = card.dataset.cardId;
+      if(!id) return;
+      cardCollapse[id] = !cardCollapse[id];
+      try{ localStorage.setItem('keymapCardCollapse', JSON.stringify(cardCollapse)); }catch(err){}
+      card.classList.toggle('collapsed', cardCollapse[id]);
+      if(leafletMap) setTimeout(()=> leafletMap.invalidateSize(), 240);
+    });
+  });
+
+  applyPanelVisibility();
+  renderPanelsMenu();
+  applyCardCollapse();
+  paintIcons();
 
   kmShellReady = true;
   refreshShell();
