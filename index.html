@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KEYMAP — Geospatial Intelligence Platform</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230B1220'/%3E%3Ccircle cx='12' cy='12' r='1.9' fill='%235AC8FA'/%3E%3Cg fill='none' stroke='%235AC8FA' stroke-width='1.5'%3E%3Cellipse cx='12' cy='12' rx='9.2' ry='4'/%3E%3Cellipse cx='12' cy='12' rx='9.2' ry='4' transform='rotate(60 12 12)'/%3E%3Cellipse cx='12' cy='12' rx='9.2' ry='4' transform='rotate(120 12 12)'/%3E%3C/g%3E%3C/svg%3E">
 <script>/* JSZip 3.10.1 (MIT) */
 /*!
 
@@ -47,6 +48,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     --gold-hi:#E2B65C;
     --gold-dim:rgba(200,155,60,.15);
     --gold-soft:rgba(200,155,60,.22);
+
+    --logo-blue:#5AC8FA;
+    --logo-blue-hi:#8AD9FF;
 
     --text:#E8ECF4;
     --text-2:#9AA6BD;
@@ -122,6 +126,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   .spacer{flex:1;}
   .km-header-actions{display:contents;}
   .km-header-end{display:flex; align-items:center; gap:16px; margin-inline-start:auto;}
+  #installAppBtn{display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:var(--logo-blue); border-color:var(--logo-blue); white-space:nowrap;}
+  #installAppBtn:hover{filter:brightness(1.15);}
   .btn{
     border:1px solid transparent;
     border-radius:var(--radius);
@@ -974,8 +980,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   .km-brand .km-mark{
     width:30px; height:30px; flex-shrink:0; border-radius:9px;
-    background:linear-gradient(145deg, var(--gold-hi), var(--gold));
-    display:grid; place-items:center; color:#141005;
+    background:linear-gradient(155deg, #1B2740, #0B1220);
+    border:1px solid var(--hairline-2);
+    display:grid; place-items:center; color:var(--logo-blue);
   }
   .km-brand .km-mark svg{width:18px; height:18px;}
   .km-brand-text{display:flex; flex-direction:column; gap:1px; overflow:hidden;}
@@ -1285,9 +1292,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* ---- refined brand mark ---- */
   .km-mark{
     width:32px; height:32px; flex-shrink:0; border-radius:9px;
-    background:linear-gradient(155deg, var(--gold-hi) 0%, var(--gold) 55%, #9c7a2e 100%);
-    display:grid; place-items:center; color:#141005;
-    box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 2px 6px rgba(0,0,0,.35);
+    background:linear-gradient(155deg, #1B2740 0%, #0E1626 55%, #0B1220 100%);
+    border:1px solid var(--hairline-2);
+    display:grid; place-items:center; color:var(--logo-blue);
+    box-shadow:0 1px 0 rgba(255,255,255,.08) inset, 0 2px 6px rgba(0,0,0,.35);
     position:relative; overflow:hidden;
   }
   .km-mark::after{
@@ -1406,9 +1414,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button class="km-hamburger" id="kmHamburgerBtn" data-icon="menu" data-i18n-title="openMenu"></button>
       <div class="km-brand">
         <span class="km-mark">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2.2c-4.42 0-8 3.5-8 7.85 0 5.8 8 11.75 8 11.75s8-5.95 8-11.75c0-4.35-3.58-7.85-8-7.85z" fill="currentColor"/>
-            <path d="M7.6 8.4h8.8M8.5 11h6.9M9.4 13.6h5.2" stroke="#141005" stroke-width="1.4" stroke-linecap="round"/>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="1.9" fill="currentColor" stroke="none"/>
+            <ellipse cx="12" cy="12" rx="9.2" ry="4"/>
+            <ellipse cx="12" cy="12" rx="9.2" ry="4" transform="rotate(60 12 12)"/>
+            <ellipse cx="12" cy="12" rx="9.2" ry="4" transform="rotate(120 12 12)"/>
           </svg>
         </span>
         <span class="km-brand-text">
@@ -1442,6 +1452,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   <button class="btn btn-gold" id="exportBtn" data-icon="download" data-i18n="exportKmz" disabled></button>
       </div>
       <div class="km-header-end">
+        <a class="btn btn-ghost" id="installAppBtn" data-icon="desktop" data-i18n="installApp" data-i18n-title="installAppTip"
+           href="https://github.com/motaseemabdalla0-ux/kmz-editor/releases/download/desktop-v1.0.0/KEYMAP-Setup-1.0.0.exe" target="_blank" rel="noopener"></a>
         <div class="km-panels-wrap">
           <button class="btn btn-ghost btn-icon" id="panelsMenuBtn" data-icon="viewToggle" data-i18n-title="panelsMenuTip"></button>
           <div class="km-panels-pop" id="kmPanelsPop">
@@ -2014,6 +2026,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       bmEmpty:'لا توجد علامات محفوظة',
       collapse:'طيّ القائمة',
       openMenu:'فتح القائمة الجانبية',
+      installApp:'تثبيت على الجهاز',
+      installAppTip:'تحميل نسخة سطح المكتب لويندوز (KEYMAP.exe) — تعمل بدون متصفح، بنفس البيانات والأدوات',
       nav_dashboard:'الرئيسية',
       nav_map:'الخريطة',
       nav_layers:'الطبقات',
@@ -2303,6 +2317,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       bmEmpty:'No bookmarks yet',
       collapse:'Collapse',
       openMenu:'Open side menu',
+      installApp:'Install on device',
+      installAppTip:'Download the Windows desktop version (KEYMAP.exe) — runs without a browser, same data and tools',
       nav_dashboard:'Dashboard',
       nav_map:'Map',
       nav_layers:'Layers',
@@ -5011,6 +5027,7 @@ ${inner}</table>
     chevrons:'<path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/>',
     menu:'<path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17"/>',
     vertices:'<path d="M5 8.5 12 4l7 4.5-2.2 8.5H7.2z"/><circle cx="5" cy="8.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="4" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="8.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="16.8" cy="17" r="1.6" fill="currentColor" stroke="none"/><circle cx="7.2" cy="17" r="1.6" fill="currentColor" stroke="none"/>',
+    desktop:'<rect x="2.5" y="4" width="19" height="12.5" rx="1.6"/><path d="M8.5 20.5h7M12 16.5v4"/><path d="m9.5 8.5 2.5 2.5-2.5 2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 13.5h2.5" stroke-linecap="round"/>',
     settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6h0A1.6 1.6 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v0a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
     palette:'<path d="M12 3.2a9 9 0 1 0 3.4 17.3c1-.4 1.2-1.7.3-2.3l-.5-.3a1.7 1.7 0 0 1 .9-3.1H18a3 3 0 0 0 3-3c0-4.9-4-8.6-9-8.6z"/><circle cx="7.6" cy="10.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="10.2" cy="7.2" r="1.15" fill="currentColor" stroke="none"/><circle cx="14.6" cy="7.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="16.6" cy="11.2" r="1.15" fill="currentColor" stroke="none"/>',
     info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.7v.4"/>',
