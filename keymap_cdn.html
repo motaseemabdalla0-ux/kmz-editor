@@ -2047,6 +2047,8 @@
       aiChipArea:'احسب المساحة الكلية',
       aiChipDupes:'ابحث عن المكرر',
       aiChipSummary:'تقرير موجز',
+      aiChipHelp:'ما الأوامر المتاحة؟',
+      aiChipDeleted:'كم المحذوف؟',
       aiCount:'<b>{n}</b> قطعة معروضة من أصل <b>{total}</b>، موزعة على <b>{layers}</b> طبقة.',
       aiArea:'مجموع «{key}» للقطع المعروضة: <b>{sum}</b> عبر <b>{n}</b> قطعة.',
       aiNoAreaField:'لا يوجد حقل مساحة في هذه الملفات.',
@@ -2054,7 +2056,32 @@
       aiSummary:'<b>{layers}</b> طبقة · <b>{n}</b> قطعة معروضة · <b>{cats}</b> فئة · مساحة <b>{area}</b>',
       aiSelected:'تم تحديد <b>{n}</b> قطعة تطابق «{term}».',
       aiNoMatch:'لا توجد قطع تطابق «{term}».',
-      aiUnknown:'لم أفهم الأمر. جرّب: عدد القطع · المساحة الكلية · ابحث عن المكرر · تقرير · حدد <قيمة>',
+      aiHelp:'أوامر مدعومة (مطابقة كلمات مفتاحية، ليست ذكاءً اصطناعياً حقيقياً):<br>' +
+        '&nbsp;• <b>عدد القطع</b> / <b>المساحة الكلية</b> / <b>ابحث عن المكرر</b> / <b>تقرير</b><br>' +
+        '&nbsp;• <b>حدد &lt;قيمة&gt;</b> — يبحث في الاسم والحقول<br>' +
+        '&nbsp;• <b>&lt;حقل&gt; أكبر من &lt;رقم&gt;</b> أو <b>أصغر من</b> — مثل: المساحة أكبر من 500<br>' +
+        '&nbsp;• <b>أكبر قطعة</b> / <b>أصغر قطعة</b><br>' +
+        '&nbsp;• <b>كم المحذوف</b> / <b>كم المعدّل</b><br>' +
+        '&nbsp;• <b>إلغاء التحديد</b> / <b>قرّب على المحدد</b> / <b>صدّر المحدد</b><br>' +
+        '&nbsp;• <b>صور الأقمار الصناعية</b> / <b>خريطة الشوارع</b> / <b>هجين</b><br>' +
+        '&nbsp;• <b>تراجع</b> / <b>إعادة</b> / <b>الحقول المتاحة</b>',
+      aiDeletedCount:'<b>{n}</b> قطعة محذوفة (مؤشَّرة للحذف) من أصل <b>{total}</b>.',
+      aiModifiedCount:'<b>{n}</b> قطعة مُعدَّلة منذ التحميل.',
+      aiNoSelection:'لا يوجد تحديد حالياً.',
+      aiSelectionCleared:'تم إلغاء تحديد <b>{n}</b> قطعة.',
+      aiZoomedToSelection:'تم التكبير على <b>{n}</b> قطعة محددة.',
+      aiExtreme:'{which} قطعة معروضة: <b>{name}</b> — مساحة تقريبية <b>{area}</b> م².',
+      aiExtremeLargest:'أكبر',
+      aiExtremeSmallest:'أصغر',
+      aiNoGeom:'لا توجد بيانات هندسية كافية للقطع المعروضة.',
+      aiFieldsList:'الحقول المتاحة ({n}): {list}',
+      aiBasemapSwitched:'تم التبديل إلى خلفية «{name}».',
+      aiUndone:'تم التراجع عن آخر تعديل.',
+      aiRedone:'تم تنفيذ التعديل مرة أخرى.',
+      aiExportSelDone:'تم تصدير القطع المحددة كملف KMZ.',
+      aiFilterResult:'حُدِّدت <b>{n}</b> قطعة حيث «{key}» {op} {val}.',
+      aiFilterNoField:'لم أجد حقلاً باسم قريب من «{term}» في البيانات.',
+      aiUnknown:'لم أفهم الأمر. اكتب «مساعدة» لعرض كل الأوامر المتاحة.',
       toolboxBtn:'صندوق الأدوات', toolboxBtnTip:'أدوات تحليل ومعالجة بالجملة', toolboxTitle:'صندوق الأدوات',
       undo:'تراجع', redo:'إعادة', undoOf:'تراجع عن: {what}', redoOf:'إعادة: {what}',
       undone:'تم التراجع عن: {what}', redone:'تمت إعادة: {what}',
@@ -2338,6 +2365,8 @@
       aiChipArea:'Calculate total area',
       aiChipDupes:'Find duplicates',
       aiChipSummary:'Generate report',
+      aiChipHelp:'What can you do?',
+      aiChipDeleted:'How many deleted?',
       aiCount:'<b>{n}</b> plots visible of <b>{total}</b>, across <b>{layers}</b> layers.',
       aiArea:'Sum of \"{key}\" over visible plots: <b>{sum}</b> across <b>{n}</b> plots.',
       aiNoAreaField:'These files have no area field.',
@@ -2345,7 +2374,32 @@
       aiSummary:'<b>{layers}</b> layers · <b>{n}</b> visible plots · <b>{cats}</b> categories · area <b>{area}</b>',
       aiSelected:'Selected <b>{n}</b> plots matching \"{term}\".',
       aiNoMatch:'No plots match \"{term}\".',
-      aiUnknown:'I did not recognise that. Try: how many plots · total area · find duplicates · report · select <value>',
+      aiHelp:'Supported commands (keyword matching, not a real AI):<br>' +
+        '&nbsp;• <b>how many plots</b> / <b>total area</b> / <b>find duplicates</b> / <b>report</b><br>' +
+        '&nbsp;• <b>select &lt;value&gt;</b> — searches name and fields<br>' +
+        '&nbsp;• <b>&lt;field&gt; greater than &lt;number&gt;</b> or <b>less than</b> — e.g. area greater than 500<br>' +
+        '&nbsp;• <b>largest plot</b> / <b>smallest plot</b><br>' +
+        '&nbsp;• <b>how many deleted</b> / <b>how many modified</b><br>' +
+        '&nbsp;• <b>clear selection</b> / <b>zoom to selection</b> / <b>export selection</b><br>' +
+        '&nbsp;• <b>satellite</b> / <b>street map</b> / <b>hybrid</b><br>' +
+        '&nbsp;• <b>undo</b> / <b>redo</b> / <b>list fields</b>',
+      aiDeletedCount:'<b>{n}</b> deleted (marked-for-deletion) plot(s) of <b>{total}</b>.',
+      aiModifiedCount:'<b>{n}</b> modified plot(s) since load.',
+      aiNoSelection:'Nothing is selected right now.',
+      aiSelectionCleared:'Cleared the selection (<b>{n}</b> plot(s)).',
+      aiZoomedToSelection:'Zoomed to <b>{n}</b> selected plot(s).',
+      aiExtreme:'{which} visible plot: <b>{name}</b> — approx. area <b>{area}</b> m².',
+      aiExtremeLargest:'Largest',
+      aiExtremeSmallest:'Smallest',
+      aiNoGeom:'Not enough geometry among the visible plots.',
+      aiFieldsList:'Available fields ({n}): {list}',
+      aiBasemapSwitched:'Switched to the \"{name}\" basemap.',
+      aiUndone:'Undid the last change.',
+      aiRedone:'Redid the change.',
+      aiExportSelDone:'Exported the selected plots as a KMZ file.',
+      aiFilterResult:'Selected <b>{n}</b> plots where \"{key}\" {op} {val}.',
+      aiFilterNoField:'Could not find a field close to \"{term}\" in the data.',
+      aiUnknown:'I did not recognise that. Type "help" to see everything I support.',
       toolboxBtn:'Toolbox', toolboxBtnTip:'Analysis and bulk-processing tools', toolboxTitle:'Toolbox',
       undo:'Undo', redo:'Redo', undoOf:'Undo: {what}', redoOf:'Redo: {what}',
       undone:'Undone: {what}', redone:'Redone: {what}',
@@ -5239,7 +5293,7 @@ ${inner}</table>
   });
 
   // ---- KEYMAP command console (deterministic parser, not a language model) ----
-  const AI_CHIPS = ['aiChipCount','aiChipArea','aiChipDupes','aiChipSummary'];
+  const AI_CHIPS = ['aiChipCount','aiChipArea','aiChipDupes','aiChipSummary','aiChipDeleted','aiChipHelp'];
   function renderAiChips(){
     document.getElementById('kmAiChips').innerHTML =
       AI_CHIPS.map(k=>`<button data-chip="${k}">${escapeHtml(t(k))}</button>`).join('');
@@ -5257,14 +5311,70 @@ ${inner}</table>
     const q = String(raw || '').trim();
     if(!q) return;
     if(!placemarks.length){ aiSay(escapeHtml(t('loadFileFirst'))); return; }
-    const s = q.toLowerCase();
+    // strip Arabic diacritics (shadda, harakat) so "قرّب" matches a "قرب" trigger, etc.
+    const s = q.toLowerCase().replace(/[ً-ٰٟ]/g, '');
     const vis = activePlacemarks();
+
+    // deleted / modified counts — checked before the generic count trigger below,
+    // since "كم المحذوف" ("how many deleted") also contains "كم" ("how many")
+    if(/deleted|محذوف/.test(s)){
+      const n = placemarks.filter(pm=> pm.deleted).length;
+      aiSay(t('aiDeletedCount', {n, total: placemarks.length}));
+      return;
+    }
+    if(/modified|dirty|معدل/.test(s)){
+      const n = placemarks.filter(pm=> pm.dirty).length;
+      aiSay(t('aiModifiedCount', {n}));
+      return;
+    }
 
     // count / how many
     if(/\b(count|how many)\b|كم|عدد/.test(s)){
       aiSay(t('aiCount', {n: vis.length, total: placemarks.length, layers: sources.length}));
       return;
     }
+
+    // numeric field comparison, e.g. "area > 500" / "المساحة أكبر من 500"
+    // (checked before the generic "total area" trigger, since this phrasing usually contains "area"/"مساحة" too)
+    const CMP_OPS = [
+      [/أكبر من أو يساوي|>=|at least|no less than/i, '>='],
+      [/أصغر من أو يساوي|<=|at most|no more than/i, '<='],
+      [/أكبر من|اكبر من|greater than|more than|above|>/i, '>'],
+      [/أصغر من|اصغر من|less than|below|</i, '<'],
+      [/يساوي|equals/i, '=']
+    ];
+    let cmpFilter = null;
+    for(const [re, sym] of CMP_OPS){
+      const at = s.search(re);
+      if(at === -1) continue;
+      const hit = s.match(re)[0];
+      const left = s.slice(0, at).trim();
+      const right = s.slice(at + hit.length).trim();
+      const num = (right.match(/[\d.]+/) || [])[0];
+      if(left && num){ cmpFilter = {left, op: sym, num: parseFloat(num)}; break; }
+    }
+    if(cmpFilter){
+      const keys = allFieldKeys();
+      const term = cmpFilter.left;
+      let key = keys.find(k=> term.includes(k.toLowerCase())) || keys.find(k=> k.toLowerCase().includes(term));
+      // the query term is often in Arabic ("المساحة") while the data's field names are in English
+      // ("Area (m2)") — fall back to the same area-field heuristic the KPI strip uses
+      if(!key && /area|مساحة/.test(term)) key = areaFieldKey();
+      if(!key){ aiSay(t('aiFilterNoField', {term: escapeHtml(cmpFilter.left)})); return; }
+      const cmp = {'>':(a,b)=>a>b, '<':(a,b)=>a<b, '>=':(a,b)=>a>=b, '<=':(a,b)=>a<=b, '=':(a,b)=>a===b}[cmpFilter.op];
+      const hits = vis.filter(pm=>{
+        const v = parseFloat(String(fieldValueOf(pm, key)).replace(/,/g,''));
+        return !isNaN(v) && cmp(v, cmpFilter.num);
+      });
+      if(hits.length){
+        const prev = selectedPlacemarks(); selected.clear(); prev.forEach(refreshPlacemarkVisual);
+        hits.forEach(pm=> setSelected(pm, true));
+        renderTable();
+      }
+      aiSay(t('aiFilterResult', {n: hits.length, key: escapeHtml(key), op: cmpFilter.op, val: cmpFilter.num}));
+      return;
+    }
+
     // total area
     if(/area|مساحة|المساحة/.test(s)){
       const a = sumArea(vis);
@@ -5296,6 +5406,72 @@ ${inner}</table>
       }) + top);
       return;
     }
+    // help
+    if(/^help$|مساعدة|ماذا يمكنك|كيف أستخدم|كيف استخدم|what can you do/.test(s)){
+      aiSay(t('aiHelp'));
+      return;
+    }
+    // clear selection
+    if(/clear selection|deselect all|إلغاء التحديد|الغاء التحديد/.test(s)){
+      const n = selected.size;
+      const prev = selectedPlacemarks(); selected.clear(); prev.forEach(refreshPlacemarkVisual);
+      renderTable();
+      aiSay(t('aiSelectionCleared', {n}));
+      return;
+    }
+    // zoom to selection
+    if(/zoom.*(selection|selected)|قرب.*محدد|كبر.*محدد/.test(s)){
+      const chosen = selectedPlacemarks();
+      if(!chosen.length){ aiSay(t('aiNoSelection')); return; }
+      let bounds = null;
+      chosen.forEach(pm=>{
+        const lyr = mapLayers[pm.idx];
+        if(!lyr) return;
+        bounds = bounds ? bounds.extend(lyr.getBounds()) : L.latLngBounds(lyr.getBounds());
+      });
+      if(bounds) leafletMap.fitBounds(bounds, {padding:[60,60], maxZoom:19});
+      aiSay(t('aiZoomedToSelection', {n: chosen.length}));
+      return;
+    }
+    // largest / smallest plot
+    if(/largest|biggest|أكبر قطعة|اكبر قطعة|smallest|أصغر قطعة|اصغر قطعة/.test(s)){
+      const wantLargest = /largest|biggest|أكبر قطعة|اكبر قطعة/.test(s);
+      const withArea = vis.filter(pm=> pm.rings).map(pm=> ({pm, a: placemarkAreaM2(pm)}));
+      if(!withArea.length){ aiSay(t('aiNoGeom')); return; }
+      withArea.sort((x,y)=> wantLargest ? y.a - x.a : x.a - y.a);
+      const top = withArea[0];
+      const prev = selectedPlacemarks(); selected.clear(); prev.forEach(refreshPlacemarkVisual);
+      setSelected(top.pm, true);
+      renderTable();
+      const lyr = mapLayers[top.pm.idx];
+      if(lyr) leafletMap.fitBounds(lyr.getBounds(), {padding:[80,80], maxZoom:19});
+      aiSay(t('aiExtreme', {
+        which: t(wantLargest ? 'aiExtremeLargest' : 'aiExtremeSmallest'),
+        name: escapeHtml(top.pm.name), area: fmtNum(top.a)
+      }));
+      return;
+    }
+    // basemap switch — checked hybrid before satellite, since "hybrid" queries often also say "satellite"
+    if(/hybrid|هجين/.test(s)){ applyBasemap('hybrid'); aiSay(t('aiBasemapSwitched', {name: t('baseHybrid')})); return; }
+    if(/satellite|قمر|صناعي/.test(s)){ applyBasemap('satellite'); aiSay(t('aiBasemapSwitched', {name: t('baseSatellite')})); return; }
+    if(/street|شوارع/.test(s)){ applyBasemap('streets'); aiSay(t('aiBasemapSwitched', {name: t('baseStreets')})); return; }
+    // undo / redo
+    if(/^undo$|تراجع/.test(s)){ doUndo(); aiSay(t('aiUndone')); return; }
+    if(/^redo$|إعادة$|اعادة$/.test(s)){ doRedo(); aiSay(t('aiRedone')); return; }
+    // fields list
+    if(/\bfields\b|\bcolumns\b|الحقول|الأعمدة/.test(s)){
+      const keys = allFieldKeys();
+      aiSay(t('aiFieldsList', {n: keys.length, list: escapeHtml(keys.join('، '))}));
+      return;
+    }
+    // export selection
+    if(/export selection|صدر المحدد|تصدير المحدد|صدّر المحدد/.test(s)){
+      if(!selectedPlacemarks().filter(plotVisible).length){ aiSay(t('tbExportNeedSelection')); return; }
+      tbExportSel.click();
+      aiSay(t('aiExportSelDone'));
+      return;
+    }
+
     // select by a value that exists in the data
     const m = s.match(/(?:select|show|highlight|حدد|أظهر|اظهر)\s+(.+)/);
     if(m){
