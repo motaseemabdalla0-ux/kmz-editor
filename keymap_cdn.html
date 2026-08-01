@@ -97,6 +97,9 @@
   }
   header h1 span{color:var(--gold);}
   .spacer{flex:1;}
+  .km-header-actions{display:none;}
+  .km-header-actions.show{display:contents;}
+  .km-header-end{display:flex; align-items:center; gap:16px; margin-inline-start:auto;}
   .btn{
     border:1px solid transparent;
     border-radius:var(--radius);
@@ -1351,7 +1354,7 @@
     </div>
     <nav class="km-nav" id="kmNav">
       <button id="navDashboard" data-nav="dashboard" data-icon="layoutGrid"><span data-i18n="nav_dashboard"></span><span class="km-count" id="navDashboardCount"></span></button>
-      <button id="navMap" data-nav="map" data-icon="map"><span data-i18n="nav_map"></span><span class="km-count" id="navMapCount"></span></button>
+      <button id="navMap" data-nav="map" data-icon="map" class="active"<span data-i18n="nav_map"></span><span class="km-count" id="navMapCount"></span></button>
       <button id="navLayers" data-nav="layers" data-icon="layers"><span data-i18n="nav_layers"></span><span class="km-count" id="navLayersCount"></span></button>
       <button id="navTable" data-nav="table" data-icon="table"><span data-i18n="nav_table"></span><span class="km-count" id="navTableCount"></span></button>
       <button id="navSelection" data-nav="selection" data-icon="pointer"><span data-i18n="nav_selection"></span><span class="km-count" id="navSelectionCount"></span></button>
@@ -1366,13 +1369,14 @@
 
   <div class="km-main">
     <header>
+      <div class="km-header-actions" id="kmHeaderActions">
       <div class="km-search">
         <span class="ico" data-noicon></span>
         <input type="text" id="globalSearch" data-i18n-ph="globalSearchPh">
         <kbd>Ctrl K</kbd>
       </div>
 
-  
+
   <label class="file-label" id="loadLabel" data-icon="upload"><span data-i18n="loadKmz"></span><input type="file" id="fileInput" accept=".kmz" multiple></label>
   <div class="files-wrap">
     <button class="btn btn-ghost" id="filesBtn" data-icon="folder" style="display:none;"></button>
@@ -1387,21 +1391,23 @@
   <button class="btn btn-ghost btn-icon" id="undoBtn" data-icon="undo" disabled>↶</button>
   <button class="btn btn-ghost btn-icon" id="redoBtn" data-icon="redo" disabled>↷</button>
   <button class="btn btn-gold" id="saveBtn" data-icon="save" style="display:none;"></button>
-  <div class="km-panels-wrap">
-    <button class="btn btn-ghost btn-icon" id="panelsMenuBtn" data-icon="viewToggle" data-i18n-title="panelsMenuTip"></button>
-    <div class="km-panels-pop" id="kmPanelsPop">
-      <div class="km-panels-head" data-i18n="panelsMenuHead"></div>
-      <div id="kmPanelsList"></div>
-      <div class="km-panels-foot">
-        <button id="kmPanelsShowAll" data-i18n="showAll"></button>
-        <button id="kmPanelsReset" data-i18n="panelsReset"></button>
-      </div>
-    </div>
-  </div>
-  <button class="btn btn-ghost" id="langBtn" data-icon="globe" title="Switch language / تبديل اللغة">EN</button>
   <button class="btn btn-ghost" id="resetBtn" data-icon="reset" data-i18n="resetAll" disabled></button>
   <button class="btn btn-gold" id="exportBtn" data-icon="download" data-i18n="exportKmz" disabled></button>
-
+      </div>
+      <div class="km-header-end">
+        <div class="km-panels-wrap">
+          <button class="btn btn-ghost btn-icon" id="panelsMenuBtn" data-icon="viewToggle" data-i18n-title="panelsMenuTip"></button>
+          <div class="km-panels-pop" id="kmPanelsPop">
+            <div class="km-panels-head" data-i18n="panelsMenuHead"></div>
+            <div id="kmPanelsList"></div>
+            <div class="km-panels-foot">
+              <button id="kmPanelsShowAll" data-i18n="showAll"></button>
+              <button id="kmPanelsReset" data-i18n="panelsReset"></button>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="langBtn" data-icon="globe" title="Switch language / تبديل اللغة">EN</button>
+      </div>
     </header>
 
     <div class="km-kpis" id="kmKpis"></div>
@@ -4674,13 +4680,16 @@ ${inner}</table>
     if(!btn) return;
     Array.from(e.currentTarget.querySelectorAll('button')).forEach(b=> b.classList.toggle('active', b === btn));
     const to = btn.dataset.nav;
-    if(to === 'table'){ setView('table'); }
-    else if(to === 'map' || to === 'dashboard'){ setView('map'); }
-    else if(to === 'layers'){ setView('map'); document.getElementById('kmRailLeft').scrollTop = 0; }
-    else if(to === 'selection'){ openSelPanel(); }
-    else if(to === 'toolbox'){ openToolbox(); }
-    else if(to === 'stats'){ openToolbox(); setTimeout(computeStats, 120); }
-    else if(to === 'settings'){ filesPop.classList.add('open'); }
+    closePanel(); closeSelPanel(); closeToolbox();
+    setHeaderActions(to === 'settings');
+    if(to === 'table'){ setView('table'); showOnlyMainPanels(['toolbar']); }
+    else if(to === 'map'){ setView('map'); showOnlyMainPanels([]); }
+    else if(to === 'dashboard'){ setView('map'); showOnlyMainPanels(['kpis']); }
+    else if(to === 'layers'){ setView('map'); showOnlyMainPanels(['railLeft']); document.getElementById('kmRailLeft').scrollTop = 0; }
+    else if(to === 'selection'){ showOnlyMainPanels([]); openSelPanel(); }
+    else if(to === 'toolbox'){ showOnlyMainPanels([]); openToolbox(); }
+    else if(to === 'stats'){ showOnlyMainPanels(['railRight']); openToolbox(); setTimeout(computeStats, 120); }
+    else if(to === 'settings'){ showOnlyMainPanels([]); if(filesBtn.style.display !== 'none') filesPop.classList.add('open'); }
   });
 
   // ---- KPI strip, computed from what is actually loaded ----
@@ -5521,10 +5530,27 @@ ${inner}</table>
     {id:'mapCtl',    el:'kmMapCtl',     icon:'compass',  label:'panelToggleMapCtl'}
   ];
 
+  // panels that stay off until a sidebar nav item asks for them (map-only by default)
+  const NAV_DRIVEN_PANELS = ['kpis', 'railLeft', 'railRight', 'toolbar'];
+
   let panelVis = {};
-  try{ panelVis = JSON.parse(localStorage.getItem('keymapPanelVis') || '{}'); }catch(e){}
-  function isPanelOn(id){ return panelVis[id] !== false; }
-  function savePanelVis(){ try{ localStorage.setItem('keymapPanelVis', JSON.stringify(panelVis)); }catch(e){} }
+  try{ panelVis = JSON.parse(localStorage.getItem('keymapPanelVis2') || '{}'); }catch(e){}
+  function isPanelOn(id){
+    if(NAV_DRIVEN_PANELS.includes(id)) return panelVis[id] === true;
+    return panelVis[id] !== false;
+  }
+  function savePanelVis(){ try{ localStorage.setItem('keymapPanelVis2', JSON.stringify(panelVis)); }catch(e){} }
+
+  // turns on exactly the given nav-driven panels, turns off the rest -> keeps the main screen map-only otherwise
+  function showOnlyMainPanels(ids){
+    NAV_DRIVEN_PANELS.forEach(id=> panelVis[id] = ids.includes(id));
+    savePanelVis(); applyPanelVisibility(); renderPanelsMenu();
+  }
+
+  const kmHeaderActions = document.getElementById('kmHeaderActions');
+  function setHeaderActions(show){
+    if(kmHeaderActions) kmHeaderActions.classList.toggle('show', show);
+  }
 
   const kmRestoreTab = document.getElementById('kmRestoreTab');
 
