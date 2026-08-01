@@ -97,8 +97,7 @@
   }
   header h1 span{color:var(--gold);}
   .spacer{flex:1;}
-  .km-header-actions{display:none;}
-  .km-header-actions.show{display:contents;}
+  .km-header-actions{display:contents;}
   .km-header-end{display:flex; align-items:center; gap:16px; margin-inline-start:auto;}
   .btn{
     border:1px solid transparent;
@@ -935,10 +934,20 @@
     transition:width .22s var(--ease);
   }
   .km-sidebar.collapsed{width:60px;}
-  .km-brand{
+  .km-sidebar.hidden{width:0; border:none; overflow:hidden;}
+  .km-hamburger{
+    display:grid; place-items:center; flex-shrink:0;
+    width:34px; height:34px; padding:0; margin-inline-end:2px;
+    background:transparent; border:1px solid var(--hairline-2); border-radius:var(--radius-sm);
+    color:var(--text-2); cursor:pointer;
+    transition:background .16s var(--ease), color .16s var(--ease), border-color .16s var(--ease);
+  }
+  .km-hamburger:hover{background:rgba(255,255,255,.05); color:var(--gold); border-color:var(--gold);}
+  .km-hamburger svg{width:17px; height:17px;}
+  .km-hamburger.active{color:var(--gold); border-color:var(--gold);}
+  header .km-brand{
     display:flex; align-items:center; gap:10px;
-    padding:16px 14px; border-bottom:1px solid var(--hairline);
-    min-height:62px;
+    padding:0; border-bottom:none; min-height:0;
   }
   .km-brand .km-mark{
     width:30px; height:30px; flex-shrink:0; border-radius:9px;
@@ -1339,22 +1348,10 @@
 <body>
 
 <div class="km-app">
-  <aside class="km-sidebar" id="kmSidebar">
-    <div class="km-brand">
-      <span class="km-mark">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2.2c-4.42 0-8 3.5-8 7.85 0 5.8 8 11.75 8 11.75s8-5.95 8-11.75c0-4.35-3.58-7.85-8-7.85z" fill="currentColor"/>
-          <path d="M7.6 8.4h8.8M8.5 11h6.9M9.4 13.6h5.2" stroke="#141005" stroke-width="1.4" stroke-linecap="round"/>
-        </svg>
-      </span>
-      <span class="km-brand-text">
-        <span class="brand">KEY<em>MAP</em></span>
-        <span class="tagline" data-i18n="tagline"></span>
-      </span>
-    </div>
+  <aside class="km-sidebar hidden" id="kmSidebar">
     <nav class="km-nav" id="kmNav">
       <button id="navDashboard" data-nav="dashboard" data-icon="layoutGrid"><span data-i18n="nav_dashboard"></span><span class="km-count" id="navDashboardCount"></span></button>
-      <button id="navMap" data-nav="map" data-icon="map" class="active"<span data-i18n="nav_map"></span><span class="km-count" id="navMapCount"></span></button>
+      <button id="navMap" data-nav="map" data-icon="map" class="active"><span data-i18n="nav_map"></span><span class="km-count" id="navMapCount"></span></button>
       <button id="navLayers" data-nav="layers" data-icon="layers"><span data-i18n="nav_layers"></span><span class="km-count" id="navLayersCount"></span></button>
       <button id="navTable" data-nav="table" data-icon="table"><span data-i18n="nav_table"></span><span class="km-count" id="navTableCount"></span></button>
       <button id="navSelection" data-nav="selection" data-icon="pointer"><span data-i18n="nav_selection"></span><span class="km-count" id="navSelectionCount"></span></button>
@@ -1369,6 +1366,19 @@
 
   <div class="km-main">
     <header>
+      <button class="km-hamburger" id="kmHamburgerBtn" data-icon="menu" data-i18n-title="openMenu"></button>
+      <div class="km-brand">
+        <span class="km-mark">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2.2c-4.42 0-8 3.5-8 7.85 0 5.8 8 11.75 8 11.75s8-5.95 8-11.75c0-4.35-3.58-7.85-8-7.85z" fill="currentColor"/>
+            <path d="M7.6 8.4h8.8M8.5 11h6.9M9.4 13.6h5.2" stroke="#141005" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="km-brand-text">
+          <span class="brand">KEY<em>MAP</em></span>
+          <span class="tagline" data-i18n="tagline"></span>
+        </span>
+      </div>
       <div class="km-header-actions" id="kmHeaderActions">
       <div class="km-search">
         <span class="ico" data-noicon></span>
@@ -1950,6 +1960,7 @@
       bmSaved:'حُفظت العلامة',
       bmEmpty:'لا توجد علامات محفوظة',
       collapse:'طيّ القائمة',
+      openMenu:'فتح القائمة الجانبية',
       nav_dashboard:'الرئيسية',
       nav_map:'الخريطة',
       nav_layers:'الطبقات',
@@ -2223,6 +2234,7 @@
       bmSaved:'Bookmark saved',
       bmEmpty:'No bookmarks yet',
       collapse:'Collapse',
+      openMenu:'Open side menu',
       nav_dashboard:'Dashboard',
       nav_map:'Map',
       nav_layers:'Layers',
@@ -4648,6 +4660,7 @@ ${inner}</table>
     layoutGrid:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
     pin:'<path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>',
     chevrons:'<path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/>',
+    menu:'<path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17"/>',
     settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6h0A1.6 1.6 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v0a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
     palette:'<path d="M12 3.2a9 9 0 1 0 3.4 17.3c1-.4 1.2-1.7.3-2.3l-.5-.3a1.7 1.7 0 0 1 .9-3.1H18a3 3 0 0 0 3-3c0-4.9-4-8.6-9-8.6z"/><circle cx="7.6" cy="10.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="10.2" cy="7.2" r="1.15" fill="currentColor" stroke="none"/><circle cx="14.6" cy="7.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="16.6" cy="11.2" r="1.15" fill="currentColor" stroke="none"/>',
     info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.7v.4"/>',
@@ -4681,7 +4694,6 @@ ${inner}</table>
     Array.from(e.currentTarget.querySelectorAll('button')).forEach(b=> b.classList.toggle('active', b === btn));
     const to = btn.dataset.nav;
     closePanel(); closeSelPanel(); closeToolbox();
-    setHeaderActions(to === 'settings');
     if(to === 'table'){ setView('table'); showOnlyMainPanels(['toolbar']); }
     else if(to === 'map'){ setView('map'); showOnlyMainPanels([]); }
     else if(to === 'dashboard'){ setView('map'); showOnlyMainPanels(['kpis']); }
@@ -4690,6 +4702,22 @@ ${inner}</table>
     else if(to === 'toolbox'){ showOnlyMainPanels([]); openToolbox(); }
     else if(to === 'stats'){ showOnlyMainPanels(['railRight']); openToolbox(); setTimeout(computeStats, 120); }
     else if(to === 'settings'){ showOnlyMainPanels([]); if(filesBtn.style.display !== 'none') filesPop.classList.add('open'); }
+    closeSidebar();
+  });
+
+  const kmHamburgerBtn = document.getElementById('kmHamburgerBtn');
+  function openSidebar(){
+    kmSidebar.classList.remove('hidden');
+    kmHamburgerBtn.classList.add('active');
+    if(leafletMap) setTimeout(()=> leafletMap.invalidateSize(), 240);
+  }
+  function closeSidebar(){
+    kmSidebar.classList.add('hidden');
+    kmHamburgerBtn.classList.remove('active');
+    if(leafletMap) setTimeout(()=> leafletMap.invalidateSize(), 240);
+  }
+  kmHamburgerBtn.addEventListener('click', ()=>{
+    kmSidebar.classList.contains('hidden') ? openSidebar() : closeSidebar();
   });
 
   // ---- KPI strip, computed from what is actually loaded ----
@@ -5545,11 +5573,6 @@ ${inner}</table>
   function showOnlyMainPanels(ids){
     NAV_DRIVEN_PANELS.forEach(id=> panelVis[id] = ids.includes(id));
     savePanelVis(); applyPanelVisibility(); renderPanelsMenu();
-  }
-
-  const kmHeaderActions = document.getElementById('kmHeaderActions');
-  function setHeaderActions(show){
-    if(kmHeaderActions) kmHeaderActions.classList.toggle('show', show);
   }
 
   const kmRestoreTab = document.getElementById('kmRestoreTab');
