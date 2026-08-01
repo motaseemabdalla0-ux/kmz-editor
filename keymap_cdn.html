@@ -1227,6 +1227,20 @@
     cursor:pointer; font-family:var(--sans);
   }
   .km-meas-hud button:hover{border-color:var(--gold); color:var(--gold);}
+  .km-meas-hud button.primary{background:var(--gold); color:#141005; border-color:var(--gold); font-weight:700;}
+  .leaflet-div-icon.km-vertex-marker{
+    width:14px; height:14px; border-radius:50%;
+    background:var(--gold); border:2px solid #141005;
+    box-shadow:0 0 0 2px rgba(255,255,255,.55);
+    cursor:grab; margin:0; transition:transform .1s ease;
+  }
+  .leaflet-div-icon.km-vertex-marker:hover{transform:scale(1.25);}
+  .leaflet-div-icon.km-vertex-mid{
+    width:9px; height:9px; border-radius:50%;
+    background:rgba(255,255,255,.85); border:1.5px solid var(--gold);
+    cursor:copy; opacity:.75; margin:0;
+  }
+  .leaflet-div-icon.km-vertex-mid:hover{opacity:1; transform:scale(1.4);}
   .km-mini{
     position:absolute; bottom:12px; inset-inline-end:12px; z-index:410;
     width:180px; height:130px; display:none;
@@ -1503,6 +1517,7 @@
   
   <div class="map-offline" id="offlineNote"></div>
   <div class="km-meas-hud" id="kmMeasHud"></div>
+  <div class="km-meas-hud" id="kmGeomHud"></div>
   <div class="km-mini" id="kmMini"><div id="kmMiniMap"></div></div>
   <div class="empty" id="emptyState">
     <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -1914,6 +1929,16 @@
       toolMeasure:'قياس',
       toolMeasureTip:'اضغط لإضافة نقاط — أعد الضغط على الزر لتبديل مسافة/مساحة/زاوية',
       measHint:'القياس: اضغط على الخريطة لإضافة نقاط',
+      editBoundary:'تعديل الحدود',
+      geomHudTitle:'تعديل حدود القطعة',
+      geomHudHint:'اسحب أي نقطة لتحريكها — انقر على النقطة الصغيرة في منتصف الضلع لإضافة نقطة — انقر مرتين (أو زر يمين) على نقطة لحذفها',
+      geomSave:'حفظ الحدود',
+      geomCancel:'إلغاء',
+      noGeomToEdit:'لا توجد هندسة لتعديلها في هذه القطعة',
+      minVertices:'لا يمكن أن يقل الضلع عن 3 نقاط',
+      boundarySaved:'تم حفظ حدود {name}',
+      boundaryUnchanged:'لم يتغيّر شيء',
+      opEditGeom:'تعديل حدود قطعة',
       measMode:'وضع القياس: {mode}',
       measMode_distance:'مسافة',
       measMode_area:'مساحة',
@@ -2193,6 +2218,16 @@
       toolMeasure:'Measure',
       toolMeasureTip:'Click to add points — press again to cycle distance/area/angle',
       measHint:'Measure: click the map to add points',
+      editBoundary:'Edit boundary',
+      geomHudTitle:'Editing plot boundary',
+      geomHudHint:'Drag any point to move it — click the small midpoint dot to add a point — double-click (or right-click) a point to delete it',
+      geomSave:'Save boundary',
+      geomCancel:'Cancel',
+      noGeomToEdit:'This plot has no geometry to edit',
+      minVertices:'A ring cannot have fewer than 3 points',
+      boundarySaved:'Saved the boundary for {name}',
+      boundaryUnchanged:'Nothing changed',
+      opEditGeom:'plot boundary edit',
       measMode:'Measure mode: {mode}',
       measMode_distance:'distance',
       measMode_area:'area',
@@ -3462,6 +3497,7 @@ ${inner}</table>
         <div class="mp-header">
           <div class="mp-title">${escapeHtml(cur.name)}</div>
           <button class="mp-icon" data-act="zoom" title="${escapeHtml(t('featZoom'))}">${svgIcon('zoomIn')}</button>
+          <button class="mp-icon" data-act="editgeom" title="${escapeHtml(t('editBoundary'))}" ${cur.deleted?'disabled':''}>${svgIcon('vertices')}</button>
           <button class="mp-icon" data-act="close" title="${escapeHtml(t('close'))}">${svgIcon('close')}</button>
         </div>
         ${cur.title ? `<div class="mp-sub">${escapeHtml(cur.title)}</div>` : ''}
@@ -3507,6 +3543,10 @@ ${inner}</table>
         case 'edit':
           leafletMap.closePopup(popup);
           openPanel(cur);
+          break;
+        case 'editgeom':
+          leafletMap.closePopup(popup);
+          startGeometryEdit(cur);
           break;
         case 'del': {
           const prev = cur.deleted;
@@ -4261,6 +4301,165 @@ ${inner}</table>
     pushHistory({label: label || t('opEdit'), undo: ()=> apply('before'), redo: ()=> apply('after')});
   }
 
+  // ---------- Boundary (vertex) editing ----------
+  let geomEdit = null; // {pm, layer, editLayer, vertexLayer, workParts}
+
+  function cloneRings(rings){
+    return rings.map(part=> part.map(ring=> ring.map(pt=> [pt[0], pt[1]])));
+  }
+  function ringHasClosingDup(ring){
+    if(ring.length < 2) return false;
+    const a = ring[0], b = ring[ring.length - 1];
+    return Math.abs(a[0] - b[0]) < 1e-12 && Math.abs(a[1] - b[1]) < 1e-12;
+  }
+  function openRing(ring){ return ringHasClosingDup(ring) ? ring.slice(0, -1) : ring.slice(); }
+  function closeRing(ring){ return (ring.length && !ringHasClosingDup(ring)) ? ring.concat([ring[0]]) : ring; }
+
+  function vertexIcon(){ return L.divIcon({className:'km-vertex-marker', iconSize:[14,14], iconAnchor:[7,7]}); }
+  function midIcon(){ return L.divIcon({className:'km-vertex-mid', iconSize:[9,9], iconAnchor:[4,4]}); }
+
+  function startGeometryEdit(pm){
+    if(!pm.rings || !pm.rings.length){ showToast(t('noGeomToEdit')); return; }
+    if(geomEdit) cancelGeometryEdit();
+    closePanel(); closeSelPanel(); closeToolbox();
+    leafletMap.closePopup();
+
+    const layer = mapLayers[pm.idx];
+    if(layer && mapLayerGroup.hasLayer(layer)) mapLayerGroup.removeLayer(layer);
+
+    const workParts = pm.rings.map(part=> part.map(ring=> openRing(ring)));
+    const editLayer = L.polygon(workParts, {
+      color:'#C89B3C', weight:2, dashArray:'6,4', fillColor:'#C89B3C', fillOpacity:.18
+    }).addTo(leafletMap);
+
+    geomEdit = {pm, layer, editLayer, workParts, vertexLayer: L.layerGroup().addTo(leafletMap)};
+    rebuildVertexMarkers();
+    leafletMap.fitBounds(editLayer.getBounds(), {padding:[60,60], maxZoom:19});
+    renderGeomHud();
+  }
+
+  function redrawEditLayer(){
+    geomEdit.editLayer.setLatLngs(geomEdit.workParts);
+  }
+
+  function rebuildVertexMarkers(){
+    const {vertexLayer, workParts} = geomEdit;
+    vertexLayer.clearLayers();
+    workParts.forEach((part, pi)=>{
+      part.forEach((ring, ri)=>{
+        if(ring.length < 3) return;
+        ring.forEach((pt, vi)=>{
+          const m = L.marker(pt, {icon: vertexIcon(), draggable:true}).addTo(vertexLayer);
+          m.on('drag', ()=>{
+            const ll = m.getLatLng();
+            ring[vi] = [ll.lat, ll.lng];
+            redrawEditLayer();
+          });
+          m.on('dragend', ()=> rebuildVertexMarkers());
+          const del = ev=>{ L.DomEvent.stop(ev); deleteVertex(pi, ri, vi); };
+          m.on('dblclick', del);
+          m.on('contextmenu', del);
+        });
+        ring.forEach((pt, vi)=>{
+          const next = ring[(vi + 1) % ring.length];
+          const mid = [(pt[0] + next[0]) / 2, (pt[1] + next[1]) / 2];
+          const mm = L.marker(mid, {icon: midIcon()}).addTo(vertexLayer);
+          mm.on('click', ev=>{
+            L.DomEvent.stop(ev);
+            ring.splice(vi + 1, 0, mid);
+            redrawEditLayer();
+            rebuildVertexMarkers();
+          });
+        });
+      });
+    });
+  }
+
+  function deleteVertex(pi, ri, vi){
+    const ring = geomEdit.workParts[pi][ri];
+    if(ring.length <= 3){ showToast(t('minVertices')); return; }
+    ring.splice(vi, 1);
+    redrawEditLayer();
+    rebuildVertexMarkers();
+  }
+
+  function renderGeomHud(){
+    const hud = document.getElementById('kmGeomHud');
+    hud.innerHTML = `<b>${escapeHtml(t('geomHudTitle'))}</b><br>` +
+      `<span style="color:var(--text-2); font-size:10.5px;">${escapeHtml(t('geomHudHint'))}</span>` +
+      `<div style="margin-top:7px; display:flex; gap:5px;">
+         <button data-geom="save" class="primary">${escapeHtml(t('geomSave'))}</button>
+         <button data-geom="cancel">${escapeHtml(t('geomCancel'))}</button>
+       </div>`;
+    hud.classList.add('show');
+  }
+
+  document.getElementById('kmGeomHud').addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-geom]');
+    if(!btn) return;
+    if(btn.dataset.geom === 'save') commitGeometryEdit();
+    else cancelGeometryEdit();
+  });
+
+  function teardownGeomEdit(){
+    if(!geomEdit) return;
+    leafletMap.removeLayer(geomEdit.editLayer);
+    leafletMap.removeLayer(geomEdit.vertexLayer);
+    if(geomEdit.layer && !mapLayerGroup.hasLayer(geomEdit.layer)) mapLayerGroup.addLayer(geomEdit.layer);
+    geomEdit = null;
+    document.getElementById('kmGeomHud').classList.remove('show');
+  }
+
+  function cancelGeometryEdit(){
+    if(!geomEdit) return;
+    showToast(t('boundaryUnchanged'));
+    teardownGeomEdit();
+  }
+
+  // Overwrite this placemark's <coordinates> text in the KML DOM to match pm.rings,
+  // in the same document order extractRings() originally walked (Polygon -> outer, then holes).
+  function writePlacemarkGeometryToDom(pm){
+    const polys = Array.from(pm.node.getElementsByTagName('Polygon'));
+    pm.rings.forEach((part, pi)=>{
+      const poly = polys[pi];
+      if(!poly) return;
+      const outerWrap = poly.getElementsByTagName('outerBoundaryIs')[0];
+      const outerCoordEl = outerWrap ? outerWrap.getElementsByTagName('coordinates')[0] : null;
+      if(outerCoordEl) outerCoordEl.textContent = closeRing(part[0]).map(p=> p[1] + ',' + p[0]).join(' ');
+      const innerWraps = Array.from(poly.getElementsByTagName('innerBoundaryIs'));
+      innerWraps.forEach((w, hi)=>{
+        const c = w.getElementsByTagName('coordinates')[0];
+        const hole = part[hi + 1];
+        if(c && hole) c.textContent = closeRing(hole).map(p=> p[1] + ',' + p[0]).join(' ');
+      });
+    });
+  }
+
+  function commitGeometryEdit(){
+    if(!geomEdit) return;
+    const {pm, workParts} = geomEdit;
+    const dirtyBefore = pm.dirty;
+    const before = cloneRings(pm.rings);
+    const after = workParts.map(part=> part.map(ring=> closeRing(ring)));
+
+    const apply = (rings, dirty)=>{
+      pm.rings = cloneRings(rings);
+      pm.dirty = dirty;
+      writePlacemarkGeometryToDom(pm);
+      const layer = mapLayers[pm.idx];
+      if(layer) layer.setLatLngs(pm.rings);
+      refreshPlacemarkVisual(pm);
+      renderTable();
+      renderKpis();
+      markSession();
+    };
+
+    apply(after, true);
+    teardownGeomEdit();
+    pushHistory({label: t('opEditGeom'), undo: ()=> apply(before, dirtyBefore), redo: ()=> apply(after, true)});
+    showToast(t('boundarySaved', {name: pm.name}));
+  }
+
   // numeric-aware comparison so "Area" sorts as numbers, not text
   function compareForSort(a, b){
     const av = fieldValueOf(a, sortKey), bv = fieldValueOf(b, sortKey);
@@ -4790,6 +4989,7 @@ ${inner}</table>
     pin:'<path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>',
     chevrons:'<path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/>',
     menu:'<path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17"/>',
+    vertices:'<path d="M5 8.5 12 4l7 4.5-2.2 8.5H7.2z"/><circle cx="5" cy="8.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="4" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="8.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="16.8" cy="17" r="1.6" fill="currentColor" stroke="none"/><circle cx="7.2" cy="17" r="1.6" fill="currentColor" stroke="none"/>',
     settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6h0A1.6 1.6 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v0a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
     palette:'<path d="M12 3.2a9 9 0 1 0 3.4 17.3c1-.4 1.2-1.7.3-2.3l-.5-.3a1.7 1.7 0 0 1 .9-3.1H18a3 3 0 0 0 3-3c0-4.9-4-8.6-9-8.6z"/><circle cx="7.6" cy="10.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="10.2" cy="7.2" r="1.15" fill="currentColor" stroke="none"/><circle cx="14.6" cy="7.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="16.6" cy="11.2" r="1.15" fill="currentColor" stroke="none"/>',
     info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.7v.4"/>',
