@@ -2058,10 +2058,10 @@
       aiSummary:'<b>{layers}</b> طبقة · <b>{n}</b> قطعة معروضة · <b>{cats}</b> فئة · مساحة <b>{area}</b>',
       aiSelected:'تم تحديد <b>{n}</b> قطعة تطابق «{term}».',
       aiNoMatch:'لا توجد قطع تطابق «{term}».',
-      aiHelp:'أوامر مدعومة (مطابقة كلمات مفتاحية، ليست ذكاءً اصطناعياً حقيقياً):<br>' +
-        '&nbsp;• <b>عدد القطع</b> / <b>المساحة الكلية</b> / <b>ابحث عن المكرر</b> / <b>تقرير</b><br>' +
-        '&nbsp;• <b>حدد &lt;قيمة&gt;</b> — يبحث في الاسم والحقول<br>' +
-        '&nbsp;• <b>&lt;حقل&gt; أكبر من &lt;رقم&gt;</b> أو <b>أصغر من</b> — مثل: المساحة أكبر من 500<br>' +
+      aiHelp:'أوامر مدعومة (مطابقة كلمات مفتاحية وقيم فعلية من بياناتك، ليست ذكاءً اصطناعياً حقيقياً):<br>' +
+        '&nbsp;• <b>عدد القطع</b> / <b>المساحة الكلية</b> / <b>ابحث عن المكرر</b> / <b>تقرير</b> / <b>توزيع الفئات</b><br>' +
+        '&nbsp;• <b>حدد &lt;قيمة&gt;</b> — أو اكتب القيمة مباشرة بدون «حدد»، يبحث في الاسم والفئة والحقول<br>' +
+        '&nbsp;• <b>&lt;حقل&gt; أكبر من &lt;رقم&gt;</b> أو <b>أصغر من</b> — مثل: المساحة أكبر من 500، أو حتى «الزراعية أكبر من 1000» (يجمع الفئة مع المساحة تلقائياً)<br>' +
         '&nbsp;• <b>أكبر قطعة</b> / <b>أصغر قطعة</b><br>' +
         '&nbsp;• <b>كم المحذوف</b> / <b>كم المعدّل</b><br>' +
         '&nbsp;• <b>إلغاء التحديد</b> / <b>قرّب على المحدد</b> / <b>صدّر المحدد</b><br>' +
@@ -2083,6 +2083,7 @@
       aiExportSelDone:'تم تصدير القطع المحددة كملف KMZ.',
       aiFilterResult:'حُدِّدت <b>{n}</b> قطعة حيث «{key}» {op} {val}.',
       aiFilterNoField:'لم أجد حقلاً باسم قريب من «{term}» في البيانات.',
+      aiBreakdownHead:'توزيع القطع على <b>{n}</b> فئة:',
       aiUnknown:'لم أفهم الأمر. اكتب «مساعدة» لعرض كل الأوامر المتاحة.',
       toolboxBtn:'صندوق الأدوات', toolboxBtnTip:'أدوات تحليل ومعالجة بالجملة', toolboxTitle:'صندوق الأدوات',
       undo:'تراجع', redo:'إعادة', undoOf:'تراجع عن: {what}', redoOf:'إعادة: {what}',
@@ -2377,10 +2378,10 @@
       aiSummary:'<b>{layers}</b> layers · <b>{n}</b> visible plots · <b>{cats}</b> categories · area <b>{area}</b>',
       aiSelected:'Selected <b>{n}</b> plots matching \"{term}\".',
       aiNoMatch:'No plots match \"{term}\".',
-      aiHelp:'Supported commands (keyword matching, not a real AI):<br>' +
-        '&nbsp;• <b>how many plots</b> / <b>total area</b> / <b>find duplicates</b> / <b>report</b><br>' +
-        '&nbsp;• <b>select &lt;value&gt;</b> — searches name and fields<br>' +
-        '&nbsp;• <b>&lt;field&gt; greater than &lt;number&gt;</b> or <b>less than</b> — e.g. area greater than 500<br>' +
+      aiHelp:'Supported commands (keyword matching against your actual data, not a real AI):<br>' +
+        '&nbsp;• <b>how many plots</b> / <b>total area</b> / <b>find duplicates</b> / <b>report</b> / <b>breakdown by category</b><br>' +
+        '&nbsp;• <b>select &lt;value&gt;</b> — or just type the value with no trigger word; searches name, category, and fields<br>' +
+        '&nbsp;• <b>&lt;field&gt; greater than &lt;number&gt;</b> or <b>less than</b> — e.g. area greater than 500, or even "agricultural greater than 1000" (combines category + area automatically)<br>' +
         '&nbsp;• <b>largest plot</b> / <b>smallest plot</b><br>' +
         '&nbsp;• <b>how many deleted</b> / <b>how many modified</b><br>' +
         '&nbsp;• <b>clear selection</b> / <b>zoom to selection</b> / <b>export selection</b><br>' +
@@ -2402,6 +2403,7 @@
       aiExportSelDone:'Exported the selected plots as a KMZ file.',
       aiFilterResult:'Selected <b>{n}</b> plots where \"{key}\" {op} {val}.',
       aiFilterNoField:'Could not find a field close to \"{term}\" in the data.',
+      aiBreakdownHead:'Breakdown across <b>{n}</b> categories:',
       aiUnknown:'I did not recognise that. Type "help" to see everything I support.',
       toolboxBtn:'Toolbox', toolboxBtnTip:'Analysis and bulk-processing tools', toolboxTitle:'Toolbox',
       undo:'Undo', redo:'Redo', undoOf:'Undo: {what}', redoOf:'Redo: {what}',
@@ -5370,9 +5372,21 @@ ${inner}</table>
       // the query term is often in Arabic ("المساحة") while the data's field names are in English
       // ("Area (m2)") — fall back to the same area-field heuristic the KPI strip uses
       if(!key && /area|مساحة/.test(term)) key = areaFieldKey();
+      let categoryPool = vis;
+      if(!key){
+        // no explicit field named in the phrase — maybe it's "<category> greater than <n>"
+        // ("agricultural plots bigger than 1000"), where the number implicitly means area.
+        const catWords = term.split(/\s+/).filter(w=> w.length > 1 &&
+          !/^(the|a|an|plots?|plot|قطع[ةه]?|قطعه|قطع|قطع[اي]?|و|في|من|هي|اللي|التي|الذي|بها|فيها)$/.test(w));
+        const cat = catWords.find(w=> vis.some(pm=> (legendLabelOf(pm)||'').toLowerCase().includes(w)));
+        if(cat){
+          categoryPool = vis.filter(pm=> (legendLabelOf(pm)||'').toLowerCase().includes(cat));
+          key = areaFieldKey();
+        }
+      }
       if(!key){ aiSay(t('aiFilterNoField', {term: escapeHtml(cmpFilter.left)})); return; }
       const cmp = {'>':(a,b)=>a>b, '<':(a,b)=>a<b, '>=':(a,b)=>a>=b, '<=':(a,b)=>a<=b, '=':(a,b)=>a===b}[cmpFilter.op];
-      const hits = vis.filter(pm=>{
+      const hits = categoryPool.filter(pm=>{
         const v = parseFloat(String(fieldValueOf(pm, key)).replace(/,/g,''));
         return !isNaN(v) && cmp(v, cmpFilter.num);
       });
@@ -5414,6 +5428,15 @@ ${inner}</table>
         layers: sources.length, n: vis.length, cats: cats.size,
         area: a ? fmtNum(a.sum) : '—'
       }) + top);
+      return;
+    }
+    // breakdown by category
+    if(/breakdown|per categ|by categ|لكل فئة|حسب الفئة|توزيع الفئات/.test(s)){
+      const cats = new Map();
+      vis.forEach(pm=>{ const l = legendLabelOf(pm) || '—'; cats.set(l, (cats.get(l)||0)+1); });
+      const rows = [...cats.entries()].sort((x,y)=>y[1]-x[1])
+        .map(([l,n])=>`<br>&nbsp;• ${escapeHtml(l)} — <b>${n}</b>`).join('');
+      aiSay(t('aiBreakdownHead', {n: cats.size}) + rows);
       return;
     }
     // help
@@ -5498,6 +5521,27 @@ ${inner}</table>
         aiSay(t('aiNoMatch', {term: escapeHtml(term)}));
       }
       return;
+    }
+
+    // last resort: no known command word matched, but the query itself might still be a
+    // value that exists in the data (a plot name, ID, category, district...) — try it as
+    // an implicit filter before giving up, so the assistant doesn't dead-end on phrasing
+    // it just hasn't seen a trigger word for.
+    const STOPWORDS = /^(the|a|an|is|are|of|in|and|or|what|which|show|me|plots?|قطع[ةه]?|قطع|هل|ما|ماهي|هي|في|من|على|و|أو|اللي|التي|الذي|كل)$/;
+    const words = s.split(/\s+/).filter(w=> (w.length > 1 || /^\d+$/.test(w)) && !STOPWORDS.test(w));
+    if(words.length){
+      const guess = words.join(' ');
+      const hits = vis.filter(pm=>
+        pm.name.toLowerCase().includes(guess) ||
+        (legendLabelOf(pm)||'').toLowerCase().includes(guess) ||
+        pm.fields.some(f=> String(f.val).toLowerCase().includes(guess)));
+      if(hits.length){
+        const prev = selectedPlacemarks(); selected.clear(); prev.forEach(refreshPlacemarkVisual);
+        hits.forEach(pm=> setSelected(pm, true));
+        renderTable();
+        aiSay(t('aiSelected', {n: hits.length, term: escapeHtml(guess)}));
+        return;
+      }
     }
     aiSay(`<span class="warn">${escapeHtml(t('aiUnknown'))}</span>`);
   }
