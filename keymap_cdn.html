@@ -398,9 +398,39 @@
   .map-basemaps button.active{background:var(--gold); color:var(--brown);}
   .map-fillmode{top:100px;}
   .map-fillmode button.active{background:var(--brown); color:var(--gold);}
-  .map-popup{font-family:var(--sans); min-width:170px;}
-  .map-popup .mp-title{font-weight:700; font-size:13px; margin-bottom:6px; color:var(--brown);}
-  .map-popup .mp-actions{display:flex; gap:6px;}
+  .map-popup{font-family:var(--sans); min-width:240px; max-width:300px;}
+  .map-popup .mp-header{display:flex; align-items:center; gap:2px; margin-bottom:1px;}
+  .map-popup .mp-title{flex:1; font-weight:700; font-size:13px; margin:0; color:var(--brown); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .map-popup .mp-sub{font-size:11px; font-weight:700; margin:0 0 8px; letter-spacing:.2px;}
+  .map-popup .mp-icon{
+    width:22px; height:22px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    border-radius:6px; background:transparent; border:none; cursor:pointer; color:#8a8378;
+  }
+  .map-popup .mp-icon:hover{background:rgba(0,0,0,.06);}
+  .map-popup .mp-icon svg{width:13px; height:13px;}
+  .map-popup .mp-body-scroll{max-height:260px; overflow-y:auto; margin:0 -2px;}
+  .map-popup .mp-table{width:100%; border-collapse:collapse; font-size:11.5px;}
+  .map-popup .mp-table td{padding:5px 6px; border-bottom:1px solid var(--line); vertical-align:top;}
+  .map-popup .mp-table tr:last-child td{border-bottom:none;}
+  .map-popup .mp-table td:first-child{color:#8a8378; font-weight:600; white-space:nowrap; padding-inline-end:14px;}
+  .map-popup .mp-table td:last-child{color:var(--brown); text-align:end; word-break:break-word;}
+  .map-popup .mp-empty{font-size:11.5px; color:#8a8378; padding:6px 2px;}
+  .map-popup .mp-pager{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding-top:8px; margin-top:8px; border-top:1px solid var(--line);
+  }
+  .map-popup .mp-nav{display:flex; align-items:center; gap:5px;}
+  .map-popup .mp-arrow{
+    width:20px; height:20px; border:1px solid var(--line); background:var(--white);
+    border-radius:5px; color:var(--brown); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .map-popup .mp-arrow:hover{border-color:var(--gold);}
+  .map-popup .mp-arrow:disabled{opacity:.35; cursor:not-allowed;}
+  .map-popup .mp-arrow svg{width:11px; height:11px;}
+  .map-popup .mp-count{font-size:10.5px; color:#8a8378; font-variant-numeric:tabular-nums;}
+  .map-popup .mp-viewall{background:transparent; border:none; color:var(--gold); font-size:11px; font-weight:700; cursor:pointer; padding:0;}
+  .map-popup .mp-viewall:hover{text-decoration:underline;}
+  .map-popup .mp-actions{display:flex; gap:6px; margin-top:9px;}
   .btn-sm{padding:5px 10px !important; font-size:12px !important;}
   .leaflet-popup-content-wrapper{border-radius:6px; border:1px solid var(--gold);}
   .leaflet-popup-content{margin:10px 12px;}
@@ -858,6 +888,16 @@
   .leaflet-popup-tip{background:var(--surface-2); border:1px solid var(--hairline-2);}
   .leaflet-popup-close-button{color:var(--text-3) !important;}
   .map-popup .mp-title{color:var(--text);}
+  .map-popup .mp-icon{color:var(--text-3);}
+  .map-popup .mp-icon:hover{background:rgba(255,255,255,.08); color:var(--gold);}
+  .map-popup .mp-table td{border-color:var(--hairline);}
+  .map-popup .mp-table td:first-child{color:var(--text-3);}
+  .map-popup .mp-table td:last-child{color:var(--text);}
+  .map-popup .mp-empty{color:var(--text-3);}
+  .map-popup .mp-pager{border-color:var(--hairline);}
+  .map-popup .mp-arrow{border-color:var(--hairline); background:rgba(255,255,255,.04); color:var(--text-2);}
+  .map-popup .mp-arrow:hover{border-color:var(--gold); color:var(--gold);}
+  .map-popup .mp-count{color:var(--text-3);}
 
   /* motion */
   @keyframes kmFadeUp{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
@@ -1937,6 +1977,7 @@
       stateDeleted:'محذوفة',
       featZoom:'تكبير',
       noData:'لا توجد بيانات',
+      mpViewAll:'تحديد الكل',
       aiTag:'تجريبي',
       aiPlaceholder:'اسأل عن بياناتك الجغرافية...',
       aiChipCount:'كم عدد القطع؟',
@@ -2209,6 +2250,7 @@
       stateDeleted:'Deleted',
       featZoom:'Zoom',
       noData:'No data',
+      mpViewAll:'Select all',
       aiTag:'BETA',
       aiPlaceholder:'Ask anything about your GIS data...',
       aiChipCount:'How many plots?',
@@ -2787,15 +2829,14 @@ ${inner}</table>
         if(Date.now() - boxSelectEndedAt < 300) return;
         if(selectMode || (oe && (oe.ctrlKey || oe.metaKey))){
           if(oe) L.DomEvent.stop(oe);
-          // a popup bound by an earlier plain click would otherwise reopen on every click
-          if(layer.getPopup()){ layer.closePopup(); layer.unbindPopup(); }
+          leafletMap.closePopup();  // showQuickPopup opens a map-level popup now, not a layer-bound one
           const on = setSelected(pm);
           renderTable();
           showToast(on ? t('selectedOne', {name: pm.name}) : t('deselectedOne', {name: pm.name}));
           return;
         }
         if(kmShellReady) showFeature(pm);
-        showQuickPopup(pm, layer);
+        showQuickPopup(pm, layer, ev.latlng);
       });
       layer.addTo(mapLayerGroup);
       mapLayers[pm.idx] = layer;
@@ -3205,37 +3246,148 @@ ${inner}</table>
     showToast(on ? t('catShown', {name: group.label}) : t('catHidden', {name: group.label}));
   });
 
-  function showQuickPopup(pm, layer){
+  // Every placemark whose polygon genuinely contains the click point, not
+  // just the one Leaflet happened to hand us — overlapping zoning/boundary
+  // layers are common in real KMZ data, and clicking should surface all of
+  // them (with paging), not silently show whichever one was drawn on top.
+  function placemarksAtPoint(latlng){
+    const hits = activePlacemarks().filter(p=>{
+      const lyr = mapLayers[p.idx];
+      return lyr && p.rings && lyr.getBounds().contains(latlng) && pointInPlacemark(p, latlng.lat, latlng.lng);
+    });
+    hits.sort((a, b)=> placemarkAreaM2(a) - placemarkAreaM2(b));  // smallest/most-specific first
+    return hits;
+  }
+
+  function showQuickPopup(pm, layer, latlng){
+    const stack = latlng ? placemarksAtPoint(latlng) : [pm];
+    let idx = Math.max(0, stack.indexOf(pm));
+    if(idx < 0) idx = 0;
+    if(!stack.length) stack.push(pm);
+
     const container = document.createElement('div');
     container.className = 'map-popup';
-    container.innerHTML = `<div class="mp-title">${escapeHtml(pm.name)}</div>
-      <div class="mp-actions">
-        <button class="btn btn-gold btn-sm" data-act="edit">${escapeHtml(t('edit'))}</button>
-        <button class="btn btn-outline btn-sm" data-act="del">${escapeHtml(pm.deleted?t('restore'):t('del'))}</button>
-        <button class="btn btn-outline btn-sm" data-act="sel">${escapeHtml(selected.has(pm.idx)?t('deselect'):t('select'))}</button>
-      </div>`;
-    container.querySelector('[data-act="sel"]').addEventListener('click', ()=>{
-      const on = setSelected(pm);
-      layer.closePopup();
-      layer.unbindPopup();
-      renderTable();
-      showToast(on ? t('selectedOne', {name: pm.name}) : t('deselectedOne', {name: pm.name}));
+    // Without this, a click on any button inside the popup (pager, select,
+    // edit...) bubbles out to the map and triggers Leaflet's default
+    // close-popup-on-map-click behavior before our own handler's effect is
+    // visible — the popup would vanish on every interaction. Leaflet only
+    // auto-applies this to its own static content, not to a live container
+    // we keep mutating via innerHTML.
+    L.DomEvent.disableClickPropagation(container);
+
+    // A map-level popup, not layer.bindPopup(). bindPopup() permanently
+    // registers Leaflet's OWN internal click-to-toggle handler on the layer
+    // the first time it's called — which then fights every subsequent click
+    // with this function's own "always rebuild and reopen" logic: click
+    // opens (our handler), then Leaflet's own toggle handler immediately
+    // sees "already open" and closes it again, in the same event. Opening a
+    // standalone L.popup() on the map instead avoids that entanglement
+    // entirely — this function is already the sole owner of the popup's
+    // lifecycle, so there's nothing for Leaflet's auto-toggle to help with.
+    const anchor = latlng || layer.getBounds().getCenter();
+    // closeOnClick:false is the actual fix — without it, Leaflet closes this
+    // popup the moment ANY click is handled while it's open (confirmed: even
+    // a click that changes nothing but re-renders the same content closes
+    // it), regardless of disableClickPropagation on the content. This
+    // function is the sole owner of the popup's lifecycle (see the explicit
+    // leafletMap.closePopup(popup) calls below), so ceding that to Leaflet's
+    // default click-anywhere-closes behavior was never correct here.
+    const popup = L.popup({maxWidth: 300, autoPanPadding: [20, 20], closeOnClick: false})
+      .setLatLng(anchor).setContent(container);
+    popup.openOn(leafletMap);
+
+    function render(){
+      const cur = stack[idx];
+      const fieldRows = cur.fields.length
+        ? cur.fields.map(f=>`<tr><td>${escapeHtml(f.key)}</td><td>${escapeHtml(f.val || '—')}</td></tr>`).join('')
+        : `<div class="mp-empty">${escapeHtml(t('noData'))}</div>`;
+      const pagerHtml = stack.length > 1 ? `
+        <div class="mp-pager">
+          <div class="mp-nav">
+            <button class="mp-arrow" data-act="prev" ${idx===0?'disabled':''}>${svgIcon('chevronDown').replace('<svg', '<svg style="transform:rotate(90deg)"')}</button>
+            <span class="mp-count">${idx+1} / ${stack.length}</span>
+            <button class="mp-arrow" data-act="next" ${idx===stack.length-1?'disabled':''}>${svgIcon('chevronDown').replace('<svg', '<svg style="transform:rotate(-90deg)"')}</button>
+          </div>
+          <button class="mp-viewall" data-act="viewall">${escapeHtml(t('mpViewAll'))}</button>
+        </div>` : '';
+
+      container.innerHTML = `
+        <div class="mp-header">
+          <div class="mp-title">${escapeHtml(cur.name)}</div>
+          <button class="mp-icon" data-act="zoom" title="${escapeHtml(t('featZoom'))}">${svgIcon('zoomIn')}</button>
+          <button class="mp-icon" data-act="close" title="${escapeHtml(t('close'))}">${svgIcon('close')}</button>
+        </div>
+        ${cur.title ? `<div class="mp-sub">${escapeHtml(cur.title)}</div>` : ''}
+        <div class="mp-body-scroll"><table class="mp-table">${fieldRows}</table></div>
+        <div class="mp-actions">
+          <button class="btn btn-gold btn-sm" data-act="edit">${escapeHtml(t('edit'))}</button>
+          <button class="btn btn-outline btn-sm" data-act="del">${escapeHtml(cur.deleted?t('restore'):t('del'))}</button>
+          <button class="btn btn-outline btn-sm" data-act="sel">${escapeHtml(selected.has(cur.idx)?t('deselect'):t('select'))}</button>
+        </div>
+        ${pagerHtml}`;
+
+      popup.update();  // recalculates popup position/size after content height changes
+    }
+
+    // A single delegated listener on the never-replaced `container`, instead
+    // of rebinding one listener per button on every render(). Rebinding
+    // meant a button's OWN click handler could call render() and destroy
+    // that same button's DOM node (via innerHTML) while its click event was
+    // still bubbling — a fragile pattern regardless of whether it was the
+    // actual cause of the popup closing unexpectedly during testing.
+    // Delegation reads `stack[idx]` fresh on every click, so it's immune to
+    // that class of bug entirely.
+    container.addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-act]');
+      if(!btn) return;
+      const cur = stack[idx];
+      switch(btn.dataset.act){
+        case 'zoom': {
+          const lyr = mapLayers[cur.idx];
+          if(lyr) leafletMap.fitBounds(lyr.getBounds(), {padding:[60,60], maxZoom:19});
+          break;
+        }
+        case 'close':
+          leafletMap.closePopup(popup);
+          break;
+        case 'sel': {
+          const on = setSelected(cur);
+          renderTable();
+          showToast(on ? t('selectedOne', {name: cur.name}) : t('deselectedOne', {name: cur.name}));
+          render();
+          break;
+        }
+        case 'edit':
+          leafletMap.closePopup(popup);
+          openPanel(cur);
+          break;
+        case 'del': {
+          const prev = cur.deleted;
+          cur.deleted = !prev;
+          refreshPlacemarkVisual(cur);
+          renderTable();
+          markSession();
+          pushDeleteChange([{pm: cur, prev}], cur.deleted, cur.deleted ? t('opDelete') : t('opRestore'));
+          showToast(cur.deleted ? t('markedDeleted', {name: cur.name}) : t('restored', {name: cur.name}));
+          if(stack.length > 1) render(); else leafletMap.closePopup(popup);
+          break;
+        }
+        case 'prev':
+          if(idx > 0){ idx--; render(); }
+          break;
+        case 'next':
+          if(idx < stack.length - 1){ idx++; render(); }
+          break;
+        case 'viewall':
+          stack.forEach(p=> setSelected(p, true));
+          renderTable();
+          leafletMap.closePopup(popup);
+          showToast(t('selectedN', {n: stack.length}));
+          break;
+      }
     });
-    container.querySelector('[data-act="edit"]').addEventListener('click', ()=>{
-      layer.closePopup();
-      openPanel(pm);
-    });
-    container.querySelector('[data-act="del"]').addEventListener('click', ()=>{
-      const prev = pm.deleted;
-      pm.deleted = !prev;
-      layer.closePopup();
-      refreshPlacemarkVisual(pm);
-      renderTable();
-      markSession();
-      pushDeleteChange([{pm, prev}], pm.deleted, pm.deleted ? t('opDelete') : t('opRestore'));
-      showToast(pm.deleted ? t('markedDeleted', {name: pm.name}) : t('restored', {name: pm.name}));
-    });
-    layer.bindPopup(container).openPopup();
+
+    render();
   }
 
   function effectiveFill(){ return fillMode; }
