@@ -1507,6 +1507,7 @@
     <button data-tool="lasso" data-icon="lasso" data-i18n="toolLasso" data-i18n-title="toolLassoTip"></button>
     <button data-tool="brush" data-icon="brush" data-i18n="toolBrush" data-i18n-title="toolBrushTip"></button>
     <button data-tool="measure" data-icon="ruler" data-i18n="toolMeasure" data-i18n-title="toolMeasureTip"></button>
+    <button data-tool="newplot" data-icon="plotAdd" data-i18n="toolNewPlot" data-i18n-title="toolNewPlotTip"></button>
     <button class="km-dismiss" data-panel-close="drawTools" data-icon-inline="xSmall" data-i18n-title="hideThis"></button>
   </div>
   <div class="map-tools map-basemaps km-dismissable" id="mapBasemaps">
@@ -1531,6 +1532,7 @@
   <div class="map-offline" id="offlineNote"></div>
   <div class="km-meas-hud" id="kmMeasHud"></div>
   <div class="km-meas-hud" id="kmGeomHud"></div>
+  <div class="km-meas-hud" id="kmNewPlotHud"></div>
   <div class="km-mini" id="kmMini"><div id="kmMiniMap"></div></div>
   <div class="empty" id="emptyState">
     <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -1943,6 +1945,20 @@
       toolMeasure:'قياس',
       toolMeasureTip:'اضغط لإضافة نقاط — أعد الضغط على الزر لتبديل مسافة/مساحة/زاوية',
       measHint:'القياس: اضغط على الخريطة لإضافة نقاط',
+      toolNewPlot:'قطعة جديدة',
+      toolNewPlotTip:'ارسم حدود مزرعة جديدة على الخريطة',
+      newPlotHint:'قطعة جديدة: اضغط على الخريطة لرسم حدودها (3 نقاط على الأقل)',
+      newPlotHudTitle:'رسم قطعة جديدة',
+      newPlotPoints:'النقاط: <b>{n}</b>',
+      newPlotArea:'المساحة التقريبية: <b>{area}</b> م²',
+      newPlotFinish:'إنهاء',
+      newPlotUndoPoint:'تراجع عن نقطة',
+      newPlotCancel:'إلغاء',
+      newPlotMinPoints:'ارسم 3 نقاط على الأقل قبل الإنهاء',
+      newPlotName:'قطعة جديدة',
+      newPlotAdded:'أُضيفت قطعة جديدة — عدّل اسمها وبياناتها ثم احفظ',
+      newPlotCancelled:'أُلغي رسم القطعة الجديدة',
+      opAddPlot:'إضافة قطعة',
       editBoundary:'تعديل الحدود',
       geomHudTitle:'تعديل حدود القطعة',
       geomHudHint:'اسحب أي نقطة لتحريكها — انقر على النقطة الصغيرة في منتصف الضلع لإضافة نقطة — انقر مرتين (أو زر يمين) على نقطة لحذفها',
@@ -2263,6 +2279,20 @@
       toolMeasure:'Measure',
       toolMeasureTip:'Click to add points — press again to cycle distance/area/angle',
       measHint:'Measure: click the map to add points',
+      toolNewPlot:'New plot',
+      toolNewPlotTip:'Draw a new plot boundary on the map',
+      newPlotHint:'New plot: click the map to draw its boundary (at least 3 points)',
+      newPlotHudTitle:'Drawing a new plot',
+      newPlotPoints:'Points: <b>{n}</b>',
+      newPlotArea:'Approx. area: <b>{area}</b> m²',
+      newPlotFinish:'Finish',
+      newPlotUndoPoint:'Undo point',
+      newPlotCancel:'Cancel',
+      newPlotMinPoints:'Draw at least 3 points before finishing',
+      newPlotName:'New plot',
+      newPlotAdded:'Added a new plot — edit its name and fields, then save',
+      newPlotCancelled:'Cancelled drawing the new plot',
+      opAddPlot:'add plot',
       editBoundary:'Edit boundary',
       geomHudTitle:'Editing plot boundary',
       geomHudHint:'Drag any point to move it — click the small midpoint dot to add a point — double-click (or right-click) a point to delete it',
@@ -3085,6 +3115,11 @@ ${inner}</table>
       layer.on('click', (ev)=>{
         const oe = ev.originalEvent;
         if(Date.now() - boxSelectEndedAt < 300) return;
+        if(mapTool === 'newplot'){
+          if(oe) L.DomEvent.stop(oe);
+          newPlotClick(ev.latlng);
+          return;
+        }
         if(selectMode || (oe && (oe.ctrlKey || oe.metaKey))){
           if(oe) L.DomEvent.stop(oe);
           leafletMap.closePopup();  // showQuickPopup opens a map-level popup now, not a layer-bound one
@@ -3336,7 +3371,10 @@ ${inner}</table>
       announceDrag(changed, additive);
     }
 
-    map.on('click', (e)=>{ if(mapTool === 'measure'){ L.DomEvent.stop(e.originalEvent); measureClick(e.latlng); } });
+    map.on('click', (e)=>{
+      if(mapTool === 'measure'){ L.DomEvent.stop(e.originalEvent); measureClick(e.latlng); }
+      else if(mapTool === 'newplot'){ L.DomEvent.stop(e.originalEvent); newPlotClick(e.latlng); }
+    });
     map.on('mousedown', begin);
     map.on('mousemove', move);
     map.on('mouseup', finish);
@@ -3345,6 +3383,7 @@ ${inner}</table>
   }
 
   function setMapTool(tool){
+    const wasNewPlot = mapTool === 'newplot';
     mapTool = tool || null;
     Array.from(mapTools.querySelectorAll('button')).forEach(b=>{
       b.classList.toggle('active', (b.dataset.tool || null) === mapTool);
@@ -3352,16 +3391,25 @@ ${inner}</table>
     if(leafletMap){
       L.DomUtil[mapTool ? 'addClass' : 'removeClass'](leafletMap.getContainer(), 'leaflet-crosshair');
     }
+    // tool-specific cleanup/setup lives here (not just the button click handler) so any
+    // caller that changes tools — including the Escape-key handler — resets state correctly.
+    if(mapTool !== 'measure') clearMeasure();
+    if(mapTool === 'newplot') showNewPlotHud();
+    else if(wasNewPlot) cancelNewPlot();
   }
 
   mapTools.addEventListener('click', (e)=>{
     const btn = e.target.closest('button[data-tool]');
     if(!btn) return;
     const tool = btn.dataset.tool || null;
+    if(tool === 'newplot' && mapTool !== 'newplot' && !placemarks.length){
+      showToast(t('loadFileFirst'));
+      return;
+    }
     setMapTool(mapTool === tool ? null : tool);
-    if(mapTool !== 'measure') clearMeasure();
     if(mapTool){
-      showToast(mapTool === 'measure' ? t('measHint') : mapTool === 'brush' ? t('brushTip') : t('drawTip'));
+      showToast(mapTool === 'measure' ? t('measHint') : mapTool === 'brush' ? t('brushTip')
+        : mapTool === 'newplot' ? t('newPlotHint') : t('drawTip'));
     }
   });
 
@@ -4394,6 +4442,19 @@ ${inner}</table>
   function vertexIcon(){ return L.divIcon({className:'km-vertex-marker', iconSize:[14,14], iconAnchor:[7,7]}); }
   function midIcon(){ return L.divIcon({className:'km-vertex-mid', iconSize:[9,9], iconAnchor:[4,4]}); }
 
+  // area of a set of parts (each part = [outerRing, ...holeRings]), rings need not be closed
+  function areaOfParts(parts){
+    let a = 0;
+    parts.forEach(part=>{
+      a += ringAreaM2(part[0]);
+      for(let h = 1; h < part.length; h++) a -= ringAreaM2(part[h]);
+    });
+    return Math.max(0, a);
+  }
+  function vertexCountOfParts(parts){
+    return parts.reduce((n, part)=> n + part.reduce((m, ring)=> m + ring.length, 0), 0);
+  }
+
   function startGeometryEdit(pm){
     if(!pm.rings || !pm.rings.length){ showToast(t('noGeomToEdit')); return; }
     if(geomEdit) cancelGeometryEdit();
@@ -4408,14 +4469,28 @@ ${inner}</table>
       color:'#C89B3C', weight:2, dashArray:'6,4', fillColor:'#C89B3C', fillOpacity:.18
     }).addTo(leafletMap);
 
-    geomEdit = {pm, layer, editLayer, workParts, vertexLayer: L.layerGroup().addTo(leafletMap)};
+    geomEdit = {pm, layer, editLayer, workParts, history: [], vertexLayer: L.layerGroup().addTo(leafletMap)};
     rebuildVertexMarkers();
     leafletMap.fitBounds(editLayer.getBounds(), {padding:[60,60], maxZoom:19});
-    renderGeomHud();
+  }
+
+  // snapshot the current shape onto the in-session undo stack, BEFORE a mutation —
+  // separate from the app's own undo/redo history, which only records the final saved edit.
+  function pushGeomSnapshot(){
+    if(!geomEdit) return;
+    geomEdit.history.push(cloneRings(geomEdit.workParts));
+    if(geomEdit.history.length > 40) geomEdit.history.shift();
+  }
+  function undoGeomStep(){
+    if(!geomEdit || !geomEdit.history.length){ showToast(t('nothingToUndo')); return; }
+    geomEdit.workParts = geomEdit.history.pop();
+    redrawEditLayer();
+    rebuildVertexMarkers();
   }
 
   function redrawEditLayer(){
     geomEdit.editLayer.setLatLngs(geomEdit.workParts);
+    renderGeomHud();
   }
 
   function rebuildVertexMarkers(){
@@ -4426,6 +4501,7 @@ ${inner}</table>
         if(ring.length < 3) return;
         ring.forEach((pt, vi)=>{
           const m = L.marker(pt, {icon: vertexIcon(), draggable:true}).addTo(vertexLayer);
+          m.on('dragstart', ()=> pushGeomSnapshot());
           m.on('drag', ()=>{
             const ll = m.getLatLng();
             ring[vi] = [ll.lat, ll.lng];
@@ -4442,6 +4518,7 @@ ${inner}</table>
           const mm = L.marker(mid, {icon: midIcon()}).addTo(vertexLayer);
           mm.on('click', ev=>{
             L.DomEvent.stop(ev);
+            pushGeomSnapshot();
             ring.splice(vi + 1, 0, mid);
             redrawEditLayer();
             rebuildVertexMarkers();
@@ -4449,21 +4526,27 @@ ${inner}</table>
         });
       });
     });
+    renderGeomHud();
   }
 
   function deleteVertex(pi, ri, vi){
     const ring = geomEdit.workParts[pi][ri];
     if(ring.length <= 3){ showToast(t('minVertices')); return; }
+    pushGeomSnapshot();
     ring.splice(vi, 1);
     redrawEditLayer();
     rebuildVertexMarkers();
   }
 
   function renderGeomHud(){
+    if(!geomEdit) return;
     const hud = document.getElementById('kmGeomHud');
+    const area = areaOfParts(geomEdit.workParts);
     hud.innerHTML = `<b>${escapeHtml(t('geomHudTitle'))}</b><br>` +
-      `<span style="color:var(--text-2); font-size:10.5px;">${escapeHtml(t('geomHudHint'))}</span>` +
+      `<span style="color:var(--text-2); font-size:10.5px;">${escapeHtml(t('geomHudHint'))}</span><br>` +
+      `${escapeHtml(t('newPlotPoints', {n: vertexCountOfParts(geomEdit.workParts)}))} · ${t('newPlotArea', {area: fmtNum(area)})}` +
       `<div style="margin-top:7px; display:flex; gap:5px;">
+         <button data-geom="undo" ${geomEdit.history.length ? '' : 'disabled'}>${escapeHtml(t('newPlotUndoPoint'))}</button>
          <button data-geom="save" class="primary">${escapeHtml(t('geomSave'))}</button>
          <button data-geom="cancel">${escapeHtml(t('geomCancel'))}</button>
        </div>`;
@@ -4474,6 +4557,7 @@ ${inner}</table>
     const btn = e.target.closest('[data-geom]');
     if(!btn) return;
     if(btn.dataset.geom === 'save') commitGeometryEdit();
+    else if(btn.dataset.geom === 'undo') undoGeomStep();
     else cancelGeometryEdit();
   });
 
@@ -4534,6 +4618,134 @@ ${inner}</table>
     teardownGeomEdit();
     pushHistory({label: t('opEditGeom'), undo: ()=> apply(before, dirtyBefore), redo: ()=> apply(after, true)});
     showToast(t('boundarySaved', {name: pm.name}));
+  }
+
+  // ---------- Draw a brand-new plot ----------
+  let newPlot = null; // {pts, layer, vertexLayer, markerLayer}
+
+  function showNewPlotHud(){
+    newPlot = {pts: [], layer: null, markerLayer: L.layerGroup().addTo(leafletMap)};
+    renderNewPlotHud();
+  }
+
+  function newPlotClick(latlng){
+    if(!newPlot) return;
+    newPlot.pts.push([latlng.lat, latlng.lng]);
+    redrawNewPlot();
+  }
+
+  function undoNewPlotPoint(){
+    if(!newPlot || !newPlot.pts.length){ showToast(t('nothingToUndo')); return; }
+    newPlot.pts.pop();
+    redrawNewPlot();
+  }
+
+  function redrawNewPlot(){
+    if(!newPlot) return;
+    if(newPlot.layer){ leafletMap.removeLayer(newPlot.layer); newPlot.layer = null; }
+    newPlot.markerLayer.clearLayers();
+    const {pts} = newPlot;
+    if(pts.length >= 3){
+      newPlot.layer = L.polygon(pts, {color:'#5AC8FA', weight:2, dashArray:'6,4', fillColor:'#5AC8FA', fillOpacity:.18}).addTo(leafletMap);
+    } else if(pts.length === 2){
+      newPlot.layer = L.polyline(pts, {color:'#5AC8FA', weight:2, dashArray:'6,4'}).addTo(leafletMap);
+    }
+    pts.forEach(pt=> L.marker(pt, {icon: vertexIcon()}).addTo(newPlot.markerLayer));
+    renderNewPlotHud();
+  }
+
+  function renderNewPlotHud(){
+    const hud = document.getElementById('kmNewPlotHud');
+    if(!newPlot){ hud.classList.remove('show'); return; }
+    const n = newPlot.pts.length;
+    const area = n >= 3 ? areaOfParts([[newPlot.pts]]) : 0;
+    hud.innerHTML = `<b>${escapeHtml(t('newPlotHudTitle'))}</b><br>` +
+      `<span style="color:var(--text-2); font-size:10.5px;">${escapeHtml(t('newPlotHint'))}</span><br>` +
+      `${escapeHtml(t('newPlotPoints', {n}))}` + (n >= 3 ? ` · ${t('newPlotArea', {area: fmtNum(area)})}` : '') +
+      `<div style="margin-top:7px; display:flex; gap:5px;">
+         <button data-newplot="undo" ${n ? '' : 'disabled'}>${escapeHtml(t('newPlotUndoPoint'))}</button>
+         <button data-newplot="finish" class="primary" ${n >= 3 ? '' : 'disabled'}>${escapeHtml(t('newPlotFinish'))}</button>
+         <button data-newplot="cancel">${escapeHtml(t('newPlotCancel'))}</button>
+       </div>`;
+    hud.classList.add('show');
+  }
+
+  document.getElementById('kmNewPlotHud').addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-newplot]');
+    if(!btn) return;
+    if(btn.dataset.newplot === 'finish') finishNewPlot();
+    else if(btn.dataset.newplot === 'undo') undoNewPlotPoint();
+    else { setMapTool(null); showToast(t('newPlotCancelled')); }
+  });
+
+  function teardownNewPlot(){
+    if(!newPlot) return;
+    if(newPlot.layer) leafletMap.removeLayer(newPlot.layer);
+    leafletMap.removeLayer(newPlot.markerLayer);
+    newPlot = null;
+    document.getElementById('kmNewPlotHud').classList.remove('show');
+  }
+
+  function cancelNewPlot(){
+    teardownNewPlot();
+  }
+
+  // Builds a fresh <Placemark> KML node (name + description table + a single Polygon ring)
+  // and returns it along with the elements later code needs to reference directly.
+  function buildNewPlacemarkNode(name, fields, ring, styleId){
+    const ns = xmlDoc.documentElement.namespaceURI;
+    const el = tag => ns ? xmlDoc.createElementNS(ns, tag) : xmlDoc.createElement(tag);
+    const node = el('Placemark');
+    const nameEl = el('name'); nameEl.textContent = name; node.appendChild(nameEl);
+    if(styleId){
+      const styleUrlEl = el('styleUrl'); styleUrlEl.textContent = '#' + styleId; node.appendChild(styleUrlEl);
+    }
+    const descEl = el('description');
+    descEl.appendChild(xmlDoc.createCDATASection(buildDescriptionHtml('', fields)));
+    node.appendChild(descEl);
+    const coordsEl = el('coordinates');
+    coordsEl.textContent = closeRing(ring).map(p=> p[1] + ',' + p[0]).join(' ');
+    const linearRing = el('LinearRing'); linearRing.appendChild(coordsEl);
+    const outer = el('outerBoundaryIs'); outer.appendChild(linearRing);
+    const poly = el('Polygon'); poly.appendChild(outer);
+    node.appendChild(poly);
+    return {node, nameEl, descEl};
+  }
+
+  function finishNewPlot(){
+    if(!newPlot || newPlot.pts.length < 3){ showToast(t('newPlotMinPoints')); return; }
+    if(!sources.length || !placemarks.length){ showToast(t('loadFileFirst')); return; }
+
+    const donorSource = sources[0];
+    const donor = placemarks.find(p=> p.sourceId === donorSource.id) || placemarks[0];
+    const fields = donor.fields.map(f=> ({key: f.key, val: ''}));
+    const {node, nameEl, descEl} = buildNewPlacemarkNode(t('newPlotName'), fields, newPlot.pts, donor.styleId);
+
+    const parentEl = donorSource.folder || docContainer(xmlDoc);
+    parentEl.appendChild(node);
+
+    const pm = buildPlacemark(node, donorSource);
+    pm.dirty = true;
+
+    const apply = present=>{
+      if(present){
+        if(!node.parentNode) parentEl.appendChild(node);
+        if(!placemarks.includes(pm)) placemarks.push(pm);
+      } else {
+        if(node.parentNode) node.parentNode.removeChild(node);
+        placemarks = placemarks.filter(p=> p !== pm);
+        selected.delete(pm.idx);
+      }
+      refreshAfterSourceChange();
+      markSession();
+    };
+
+    apply(true);
+    teardownNewPlot();
+    setMapTool(null);
+    pushHistory({label: t('opAddPlot'), undo: ()=> apply(false), redo: ()=> apply(true)});
+    showToast(t('newPlotAdded'));
+    openPanel(pm);
   }
 
   // numeric-aware comparison so "Area" sorts as numbers, not text
@@ -4989,6 +5201,24 @@ ${inner}</table>
   document.addEventListener('keydown', (e)=>{
     const t = e.target;
     const typing = t && (t.tagName === 'INPUT' && t.type !== 'checkbox' || t.tagName === 'TEXTAREA');
+    // boundary/new-plot drawing takes over the map, so its own shortcuts take priority
+    // over everything below — including the app's own Ctrl+Z, which would otherwise
+    // undo an unrelated earlier action instead of the last vertex edit.
+    if(geomEdit){
+      if(e.key === 'Escape'){ e.preventDefault(); cancelGeometryEdit(); return; }
+      if(!typing && e.key === 'Enter'){ e.preventDefault(); commitGeometryEdit(); return; }
+      if(!typing && (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey){
+        e.preventDefault(); undoGeomStep(); return;
+      }
+      if(typing) return;
+    }
+    if(mapTool === 'newplot'){
+      if(e.key === 'Escape'){ e.preventDefault(); setMapTool(null); return; }
+      if(!typing && e.key === 'Enter'){ e.preventDefault(); finishNewPlot(); return; }
+      if(!typing && (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey){
+        e.preventDefault(); undoNewPlotPoint(); return;
+      }
+    }
     if(e.key === 'Escape'){
       if(panel.classList.contains('open')) closePanel();
       else if(selPanel.classList.contains('open')) closeSelPanel();
@@ -5954,7 +6184,8 @@ ${inner}</table>
   // ---------- geo tool UI wiring ----------
   const measureHud = document.getElementById('kmMeasHud');
   Object.assign(ICONS, {
-    ruler:'<path d="M15.5 3.5 20.5 8.5 8.5 20.5 3.5 15.5z"/><path d="M8 11l1.6 1.6M11 8l1.6 1.6M5.8 13.2l1.6 1.6M13.2 5.8l1.6 1.6"/>'
+    ruler:'<path d="M15.5 3.5 20.5 8.5 8.5 20.5 3.5 15.5z"/><path d="M8 11l1.6 1.6M11 8l1.6 1.6M5.8 13.2l1.6 1.6M13.2 5.8l1.6 1.6"/>',
+    plotAdd:'<path d="M4.5 10 11 5l6 4-1.7 7.5H6.7z"/><path d="M18.5 3v5M16 5.5h5" stroke-linecap="round"/>'
   });
 
   measureHud.addEventListener('click', (e)=>{
