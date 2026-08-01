@@ -1402,6 +1402,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button id="navSelection" data-nav="selection" data-icon="pointer"><span data-i18n="nav_selection"></span><span class="km-count" id="navSelectionCount"></span></button>
       <button id="navToolbox" data-nav="toolbox" data-icon="toolbox"><span data-i18n="nav_toolbox"></span><span class="km-count" id="navToolboxCount"></span></button>
       <button id="navStats" data-nav="stats" data-icon="stats"><span data-i18n="nav_stats"></span><span class="km-count" id="navStatsCount"></span></button>
+      <button id="navAi" data-nav="ai" data-icon="sparkles"><span data-i18n="nav_ai"></span></button>
       <button id="navSettings" data-nav="settings" data-icon="settings"><span data-i18n="nav_settings"></span><span class="km-count" id="navSettingsCount"></span></button>
     </nav>
     <div class="km-collapse">
@@ -2035,6 +2036,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       nav_selection:'التحديد',
       nav_toolbox:'صندوق الأدوات',
       nav_stats:'الإحصائيات',
+      nav_ai:'KEYMAP AI',
       nav_settings:'الملفات',
       globalSearchPh:'ابحث في القطع والحقول...',
       panelLayers:'الطبقات',
@@ -2353,6 +2355,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       nav_selection:'Selection',
       nav_toolbox:'Toolbox',
       nav_stats:'Statistics',
+      nav_ai:'KEYMAP AI',
       nav_settings:'Files',
       globalSearchPh:'Search plots and fields...',
       panelLayers:'Layers',
@@ -5122,6 +5125,13 @@ ${inner}</table>
     else if(to === 'selection'){ showOnlyMainPanels([]); openSelPanel(); }
     else if(to === 'toolbox'){ showOnlyMainPanels([]); openToolbox(); }
     else if(to === 'stats'){ showOnlyMainPanels(['railRight']); openToolbox(); setTimeout(computeStats, 120); }
+    else if(to === 'ai'){
+      setView('map'); showOnlyMainPanels(['railRight']);
+      setTimeout(()=>{
+        document.querySelector('[data-card-id="ai"]')?.scrollIntoView({block:'nearest'});
+        kmAiInput.focus();
+      }, 260);
+    }
     else if(to === 'settings'){ showOnlyMainPanels([]); if(filesBtn.style.display !== 'none') filesPop.classList.add('open'); }
     closeSidebar();
   });
