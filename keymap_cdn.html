@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/shpjs@6.2.0/dist/shp.min.js"></script>
+<script src="https://unpkg.com/@mapbox/shp-write@0.4.3/shpwrite.js"></script>
 <style>
   :root{
     /* ===== KEYMAP — Geospatial Intelligence Platform ===== */
@@ -343,6 +344,12 @@
   }
   .map-legend .lg-row:hover{background:var(--gold-soft);}
   .map-legend .lg-swatch{width:11px; height:11px; border-radius:2px; flex-shrink:0; border:1px solid rgba(0,0,0,.2);}
+  input[type=color].lg-swatch{
+    padding:0; cursor:pointer; background:none; appearance:none; -webkit-appearance:none;
+  }
+  input[type=color].lg-swatch::-webkit-color-swatch-wrapper{padding:0;}
+  input[type=color].lg-swatch::-webkit-color-swatch{border:1px solid rgba(0,0,0,.2); border-radius:2px;}
+  input[type=color].lg-swatch::-moz-color-swatch{border:1px solid rgba(0,0,0,.2); border-radius:2px;}
   .map-legend .lg-count{margin-inline-start:auto; font-family:var(--mono); font-size:10px; color:#8a8378;}
   .map-legend .lg-head{font-weight:700; font-size:10px; color:#8a8378; padding:0 4px 4px; border-bottom:1px solid var(--line); margin-bottom:4px;}
   .map-hint{
@@ -1429,7 +1436,14 @@
   <button class="btn btn-ghost btn-icon" id="redoBtn" data-icon="redo" disabled>↷</button>
   <button class="btn btn-gold" id="saveBtn" data-icon="save" style="display:none;"></button>
   <button class="btn btn-ghost" id="resetBtn" data-icon="reset" data-i18n="resetAll" disabled></button>
-  <button class="btn btn-gold" id="exportBtn" data-icon="download" data-i18n="exportKmz" disabled></button>
+  <div class="km-panels-wrap">
+    <button class="btn btn-gold" id="exportBtn" data-icon="download" data-i18n="exportBtn" disabled></button>
+    <div class="km-panels-pop" id="exportPop">
+      <div class="km-panels-head" data-i18n="exportPopHead"></div>
+      <button class="mini-btn" id="exportKmzBtn" data-icon="download" style="width:100%; margin-bottom:6px;" data-i18n="exportKmz" data-i18n-title="exportKmzTip"></button>
+      <button class="mini-btn" id="exportShpBtn" data-icon="download" style="width:100%;" data-i18n="exportShp" data-i18n-title="exportShpTip"></button>
+    </div>
+  </div>
       </div>
       <div class="km-header-end">
         <a class="btn btn-ghost" id="installAppBtn" data-icon="desktop" data-i18n="installApp" data-i18n-title="installAppTip"
@@ -1799,7 +1813,12 @@
       appTitle:'<span class="brand">KEY<em>MAP</em></span><span class="tagline">منصة الذكاء الجغرافي</span>',
       loadKmz:'تحميل KMZ / Shapefile',
       resetAll:'تراجع عن الكل',
+      exportBtn:'تصدير',
+      exportPopHead:'اختر صيغة التصدير',
       exportKmz:'تصدير KMZ',
+      exportKmzTip:'ملف KMZ — يحافظ على الألوان والتنسيق الأصلي، يفتح في Google Earth',
+      exportShp:'تصدير Shapefile (ZIP)',
+      exportShpTip:'ملف .zip يحتوي .shp/.shx/.dbf/.prj — للاستخدام في QGIS/ArcGIS. أسماء الحقول تُختصر لـ10 أحرف (قيد صيغة Shapefile)',
       statTotal:'إجمالي:',
       statShown:'معروض:',
       searchPh:'ابحث في جميع الحقول (Plot ID, District...)',
@@ -1860,6 +1879,7 @@
       badXml:'تعذّرت قراءة الملف — XML غير صالح',
       openError:'خطأ في فتح الملف: {msg}',
       shpLibMissing:'مكتبة قراءة Shapefile لم تُحمَّل — تحقق من الاتصال بالإنترنت وأعد المحاولة',
+      shpWriteLibMissing:'مكتبة كتابة Shapefile لم تُحمَّل — تحقق من الاتصال بالإنترنت وأعد المحاولة',
       shpNoGeom:'لم يتم العثور على أي هندسة مضلعات (Polygon) صالحة في {file}',
       shpMissingDbf:'ملف {file} يحتاج ملف .dbf مرافقاً بنفس الاسم — حدده مع ملف .shp معاً',
       shpSkippedGeom:'تم تجاهل {n} عنصر من {file} لأنه ليس مضلعاً (نقاط/خطوط غير مدعومة حالياً)',
@@ -1916,6 +1936,9 @@
       fileShown:'تم إظهار {name}', fileHidden:'تم إخفاء {name}',
       shownAllFiles:'تم إظهار كل الملفات', hiddenAllFiles:'تم إخفاء كل الملفات',
       legendVisTip:'إظهار أو إخفاء قطع هذه الفئة',
+      changeColor:'تغيير لون الفئة',
+      colorChanged:'تم تغيير لون «{name}»',
+      opColorChange:'تغيير لون فئة',
       catShown:'تم إظهار {name}', catHidden:'تم إخفاء {name} — لا يمكن تحديدها أو حذفها الآن',
       shownAllCats:'تم إظهار كل الفئات', hiddenAllCats:'تم إخفاء كل الفئات',
       saveWork:'حفظ العمل', saved:'محفوظ',
@@ -2135,7 +2158,12 @@
       appTitle:'<span class="brand">KEY<em>MAP</em></span><span class="tagline">Geospatial Intelligence Platform</span>',
       loadKmz:'Load KMZ / Shapefile',
       resetAll:'Reset all',
+      exportBtn:'Export',
+      exportPopHead:'Choose export format',
       exportKmz:'Export KMZ',
+      exportKmzTip:'KMZ file — keeps original colours/formatting, opens in Google Earth',
+      exportShp:'Export Shapefile (ZIP)',
+      exportShpTip:'A .zip with .shp/.shx/.dbf/.prj — for QGIS/ArcGIS. Field names are truncated to 10 characters (a Shapefile format limit)',
       statTotal:'Total:',
       statShown:'Shown:',
       searchPh:'Search all fields (Plot ID, District...)',
@@ -2195,6 +2223,7 @@
       badXml:'Could not read the file — invalid XML',
       openError:'Error opening the file: {msg}',
       shpLibMissing:'The Shapefile reader library failed to load — check your internet connection and try again',
+      shpWriteLibMissing:'The Shapefile writer library failed to load — check your internet connection and try again',
       shpNoGeom:'No valid polygon geometry found in {file}',
       shpMissingDbf:'{file} needs a matching .dbf file — select it together with the .shp',
       shpSkippedGeom:'Skipped {n} feature(s) from {file} — not a polygon (points/lines are not supported yet)',
@@ -2250,6 +2279,9 @@
       fileShown:'Showing {name}', fileHidden:'Hid {name}',
       shownAllFiles:'All files shown', hiddenAllFiles:'All files hidden',
       legendVisTip:'Show or hide this category',
+      changeColor:'Change category colour',
+      colorChanged:'Changed the colour of "{name}"',
+      opColorChange:'category colour change',
       catShown:'Showing {name}', catHidden:'Hid {name} — it cannot be selected or deleted now',
       shownAllCats:'All categories shown', hiddenAllCats:'All categories hidden',
       saveWork:'Save work', saved:'Saved',
@@ -3501,7 +3533,7 @@ ${inner}</table>
       const on = [...g.ids].some(id=> !hiddenStyles.has(id));
       return `<div class="lg-row${on ? '' : ' off'}" data-group="${i}">
         <input type="checkbox" ${on ? 'checked' : ''} title="${escapeHtml(t('legendVisTip'))}">
-        <span class="lg-swatch" style="background:${g.colour}"></span>
+        <input type="color" class="lg-swatch" data-group-color="${i}" value="${g.colour}" title="${escapeHtml(t('changeColor'))}">
         <span class="lg-name" title="${escapeHtml(g.label)}">${escapeHtml(g.label)}</span>
         <span class="lg-count">${g.count}</span>
         <button class="lg-pick" data-pick="${i}" title="${escapeHtml(t('legendTip'))}">${svgIcon('checkSquare')}</button>
@@ -3525,6 +3557,8 @@ ${inner}</table>
   }
 
   mapLegend.addEventListener('click', (e)=>{
+    // opening the native colour picker must not also toggle the category's visibility
+    if(e.target.matches('input[type=color]')) return;
     const bulk = e.target.closest('button[data-cat]');
     if(bulk){
       const on = bulk.dataset.cat === 'all';
@@ -3557,6 +3591,59 @@ ${inner}</table>
     renderTable();
     showToast(on ? t('catShown', {name: group.label}) : t('catHidden', {name: group.label}));
   });
+
+  mapLegend.addEventListener('change', (e)=>{
+    const inp = e.target.closest('input[type=color][data-group-color]');
+    if(!inp) return;
+    const group = legendGroups[Number(inp.dataset.groupColor)];
+    if(!group) return;
+    setGroupColor(group, inp.value);
+  });
+
+  // KML colours are aabbggrr hex — the inverse byte order of a CSS #rrggbb.
+  function cssToKmlColor(hex, alpha){
+    const h = hex.replace('#', '');
+    const rr = h.slice(0, 2), gg = h.slice(2, 4), bb = h.slice(4, 6);
+    const aa = Math.round((alpha == null ? 1 : alpha) * 255).toString(16).padStart(2, '0');
+    return (aa + bb + gg + rr).toLowerCase();
+  }
+
+  // Finds the <Style id="..."> element backing a style id, creating a minimal
+  // PolyStyle/LineStyle/color skeleton if the id has no style element yet.
+  function getOrCreateStyleElement(styleId){
+    const ns = xmlDoc.documentElement.namespaceURI;
+    const el = tag => ns ? xmlDoc.createElementNS(ns, tag) : xmlDoc.createElement(tag);
+    let styleEl = Array.from(xmlDoc.getElementsByTagName('Style')).find(s=> s.getAttribute('id') === styleId);
+    if(!styleEl){
+      styleEl = el('Style');
+      styleEl.setAttribute('id', styleId);
+      docContainer(xmlDoc).appendChild(styleEl);
+    }
+    let poly = styleEl.getElementsByTagName('PolyStyle')[0];
+    if(!poly){ poly = el('PolyStyle'); styleEl.appendChild(poly); }
+    let polyColor = poly.getElementsByTagName('color')[0];
+    if(!polyColor){ polyColor = el('color'); poly.appendChild(polyColor); }
+    return {styleEl, polyColor};
+  }
+
+  function applyGroupColor(group, hex){
+    group.ids.forEach(id=>{
+      const {polyColor} = getOrCreateStyleElement(id);
+      const alpha = (styleColorMap[id] && styleColorMap[id].fill.alpha != null) ? styleColorMap[id].fill.alpha : DEFAULT_FILL.alpha;
+      polyColor.textContent = cssToKmlColor(hex, alpha);
+    });
+    buildStyleColorMap();
+    refreshAllMapVisuals();
+    buildMapLegend();
+    markSession();
+  }
+
+  function setGroupColor(group, newHex){
+    const before = group.colour; // every id in a legend group already shares one colour
+    applyGroupColor(group, newHex);
+    pushHistory({label: t('opColorChange'), undo: ()=> applyGroupColor(group, before), redo: ()=> applyGroupColor(group, newHex)});
+    showToast(t('colorChanged', {name: group.label}));
+  }
 
   // Every placemark whose polygon genuinely contains the click point, not
   // just the one Leaflet happened to hand us — overlapping zoning/boundary
@@ -5291,13 +5378,40 @@ ${inner}</table>
   });
 
   // ---------- Export ----------
-  exportBtn.addEventListener('click', async ()=>{
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Exporting in either format is treated as "publish this state": pending
+  // deletions are dropped from the live DOM and in-memory list for good, same
+  // as the original KMZ-only export always did.
+  function finalizeDeletions(){
+    placemarks.filter(p=>p.deleted).forEach(p=>{
+      if(p.node && p.node.parentNode) p.node.parentNode.removeChild(p.node);
+    });
+    placemarks.filter(p=>p.deleted).forEach(p=>{
+      const layer = mapLayers[p.idx];
+      if(layer){ mapLayerGroup.removeLayer(layer); delete mapLayers[p.idx]; }
+      selected.delete(p.idx);
+    });
+    placemarks = placemarks.filter(p=>!p.deleted);
+    renderTable();
+    renderSourceList();
+    renderFilesPanel();
+    markSession();
+  }
+
+  async function exportAsKmz(){
     if(!xmlDoc) return;
     try{
-      // remove deleted placemarks from the live DOM
-      placemarks.filter(p=>p.deleted).forEach(p=>{
-        if(p.node && p.node.parentNode) p.node.parentNode.removeChild(p.node);
-      });
+      finalizeDeletions();
       const serializer = new XMLSerializer();
       let kmlText = serializer.serializeToString(xmlDoc);
       if(!kmlText.startsWith('<?xml')){
@@ -5306,30 +5420,76 @@ ${inner}</table>
       const zip = new JSZip();
       zip.file('doc.kml', kmlText);
       const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = originalFileName + (sources.length > 1 ? '_merged.kmz' : '_edited.kmz');
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, originalFileName + (sources.length > 1 ? '_merged.kmz' : '_edited.kmz'));
       showToast(t('exported'));
-      // remove deleted rows from our in-memory list and map, since nodes are gone
-      placemarks.filter(p=>p.deleted).forEach(p=>{
-        const layer = mapLayers[p.idx];
-        if(layer){ mapLayerGroup.removeLayer(layer); delete mapLayers[p.idx]; }
-        selected.delete(p.idx);
-      });
-      placemarks = placemarks.filter(p=>!p.deleted);
-      renderTable();
-      renderSourceList();
-      renderFilesPanel();
-      markSession();
     }catch(err){
       console.error(err);
       showToast(t('exportError', {msg: err.message}));
     }
+  }
+
+  // KML coordinates are [lat,lng]; GeoJSON/Shapefile need [lng,lat], and rings must be closed.
+  function ringsToGeoJsonGeometry(parts){
+    const toLonLat = ring => closeRing(ring).map(pt=> [pt[1], pt[0]]);
+    const polys = parts.map(part=> part.map(toLonLat));
+    return polys.length === 1 ? {type:'Polygon', coordinates: polys[0]} : {type:'MultiPolygon', coordinates: polys};
+  }
+
+  // Shapefile's DBF format caps field names at 10 characters — build a stable,
+  // collision-free mapping instead of letting the writer silently truncate/clash.
+  function dbfFieldNameMap(keys){
+    const used = new Set();
+    const map = {};
+    keys.forEach(k=>{
+      let base = (k.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 10) || 'FIELD').toUpperCase();
+      let name = base, n = 1;
+      while(used.has(name)){
+        const suffix = String(n++);
+        name = base.slice(0, 10 - suffix.length) + suffix;
+      }
+      used.add(name);
+      map[k] = name;
+    });
+    return map;
+  }
+
+  function placemarksToGeoJson(list){
+    const keys = allFieldKeys();
+    const fieldMap = dbfFieldNameMap(keys);
+    const features = [];
+    list.forEach(pm=>{
+      if(!pm.rings || !pm.rings.length) return;
+      const props = {NAME: pm.name};
+      pm.fields.forEach(f=>{ props[fieldMap[f.key] || f.key] = f.val; });
+      features.push({type:'Feature', geometry: ringsToGeoJsonGeometry(pm.rings), properties: props});
+    });
+    return {type:'FeatureCollection', features};
+  }
+
+  async function exportAsShp(){
+    if(typeof shpwrite === 'undefined'){ showToast(t('shpWriteLibMissing')); return; }
+    try{
+      finalizeDeletions();
+      const geojson = placemarksToGeoJson(placemarks);
+      if(!geojson.features.length){ showToast(t('noGeometry')); return; }
+      const blob = await shpwrite.zip(geojson, {outputType: 'blob', types: {polygon: 'plots'}});
+      downloadBlob(blob, originalFileName + (sources.length > 1 ? '_merged_shp.zip' : '_edited_shp.zip'));
+      showToast(t('exported'));
+    }catch(err){
+      console.error(err);
+      showToast(t('exportError', {msg: err.message}));
+    }
+  }
+
+  const exportPop = document.getElementById('exportPop');
+  document.getElementById('exportKmzBtn').addEventListener('click', ()=>{ exportPop.classList.remove('open'); exportAsKmz(); });
+  document.getElementById('exportShpBtn').addEventListener('click', ()=>{ exportPop.classList.remove('open'); exportAsShp(); });
+  exportBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    exportPop.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!exportPop.contains(e.target) && e.target !== exportBtn) exportPop.classList.remove('open');
   });
 
 
