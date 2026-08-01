@@ -1626,6 +1626,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 <div class="panel" id="panel">
   <div class="panel-head">
     <h2 id="panelTitle"></h2>
+    <button class="btn btn-outline btn-sm" id="panelEditGeom" data-icon="vertices" data-i18n="editBoundary"></button>
     <button class="panel-close" id="panelClose" data-icon="close"></button>
   </div>
   <div class="panel-body" id="panelBody"></div>
@@ -4658,6 +4659,7 @@ ${inner}</table>
     panel.classList.add('open');
     overlay.classList.add('open');
     panel.classList.toggle('has-changes', pm.dirty);
+    document.getElementById('panelEditGeom').disabled = !pm.rings || pm.deleted;
   }
 
   function renderPanelBody(pm){
@@ -4697,6 +4699,11 @@ ${inner}</table>
   panelClose.addEventListener('click', closePanel);
   panelCancel.addEventListener('click', closePanel);
   overlay.addEventListener('click', ()=>{ closePanel(); closeSelPanel(); });
+  document.getElementById('panelEditGeom').addEventListener('click', ()=>{
+    const pm = placemarks.find(p=> p.idx === activeIndex);
+    closePanel();
+    if(pm) startGeometryEdit(pm);
+  });
 
   panelSave.addEventListener('click', ()=>{
     const pm = placemarks.find(p=>p.idx===activeIndex);
