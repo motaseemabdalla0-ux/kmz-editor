@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/shpjs@6.2.0/dist/shp.min.js"></script>
 <style>
   :root{
     /* ===== KEYMAP — Geospatial Intelligence Platform ===== */
@@ -1387,7 +1388,7 @@
       </div>
 
 
-  <label class="file-label" id="loadLabel" data-icon="upload"><span data-i18n="loadKmz"></span><input type="file" id="fileInput" accept=".kmz" multiple></label>
+  <label class="file-label" id="loadLabel" data-icon="upload"><span data-i18n="loadKmz"></span><input type="file" id="fileInput" accept=".kmz,.zip,.shp,.dbf,.shx,.prj,.cpg" multiple></label>
   <div class="files-wrap">
     <button class="btn btn-ghost" id="filesBtn" data-icon="folder" style="display:none;"></button>
     <div class="files-pop" id="filesPop">
@@ -1764,7 +1765,7 @@
     ar: {
       title:'KEYMAP — منصة الذكاء الجغرافي',
       appTitle:'<span class="brand">KEY<em>MAP</em></span><span class="tagline">منصة الذكاء الجغرافي</span>',
-      loadKmz:'تحميل ملف KMZ',
+      loadKmz:'تحميل KMZ / Shapefile',
       resetAll:'تراجع عن الكل',
       exportKmz:'تصدير KMZ',
       statTotal:'إجمالي:',
@@ -1778,7 +1779,7 @@
       advSelectTip:'تحديد بالجملة حسب الحقول أو بلصق قائمة',
       viewMap:'خريطة',
       viewTable:'جدول',
-      emptyState:'<b>حمّل ملف KMZ</b> يحتوي على قطع أراضي (Land Use Plots) بنفس تنسيق ملفات RCU المعتادة (اسم القطعة + جدول HTML من الحقول داخل description). ستظهر القطع على خريطة تفاعلية بألوانها الأصلية — اضغط على أي قطعة للتعديل أو الحذف مباشرة، أو بدّل لعرض الجدول من الأعلى. عند التصدير يُعاد بناء نفس التنسيق والألوان دون المساس بالهندسة (Geometry).',
+      emptyState:'<b>حمّل ملف KMZ أو Shapefile</b> يحتوي على قطع أراضي (Land Use Plots). لملفات KMZ: بنفس تنسيق ملفات RCU المعتادة (اسم القطعة + جدول HTML من الحقول داخل description). لملفات Shapefile: اختر ملف .zip يحوي .shp/.dbf/.prj معاً، أو حدد ملفات .shp و.dbf (و.prj إن وجد) معاً من نفس المجلد — وسيُعاد إسقاطها تلقائياً إلى WGS84 عند وجود .prj، وتتحول حقول DBF إلى جدول الخصائص. ستظهر القطع على خريطة تفاعلية بألوانها الأصلية — اضغط على أي قطعة للتعديل أو الحذف مباشرة، أو بدّل لعرض الجدول من الأعلى. عند التصدير يُعاد بناء نفس التنسيق والألوان دون المساس بالهندسة (Geometry) كملف KMZ.',
       toolPan:'تحريك', toolPanTip:'سحب وتحريك الخريطة',
       toolRect:'مستطيل', toolRectTip:'اسحب لرسم مستطيل وتحديد كل ما بداخله',
       toolLasso:'تحديد حر', toolLassoTip:'ارسم شكلاً حراً حول المزارع المطلوبة',
@@ -1826,6 +1827,11 @@
       noKml:'لم يتم العثور على ملف .kml داخل KMZ',
       badXml:'تعذّرت قراءة الملف — XML غير صالح',
       openError:'خطأ في فتح الملف: {msg}',
+      shpLibMissing:'مكتبة قراءة Shapefile لم تُحمَّل — تحقق من الاتصال بالإنترنت وأعد المحاولة',
+      shpNoGeom:'لم يتم العثور على أي هندسة مضلعات (Polygon) صالحة في {file}',
+      shpMissingDbf:'ملف {file} يحتاج ملف .dbf مرافقاً بنفس الاسم — حدده مع ملف .shp معاً',
+      shpSkippedGeom:'تم تجاهل {n} عنصر من {file} لأنه ليس مضلعاً (نقاط/خطوط غير مدعومة حالياً)',
+      shpNoProj:'لا يوجد ملف .prj مرافق لـ {file} — تم افتراض أن الإحداثيات WGS84 (خط الطول/العرض) مباشرة',
       exported:'تم تصدير الملف — تحقق من التنزيلات',
       exportError:'خطأ أثناء التصدير: {msg}',
       markedDeleted:'تم وضع علامة حذف على: {name}',
@@ -2040,7 +2046,7 @@
     en: {
       title:'KEYMAP — Geospatial Intelligence Platform',
       appTitle:'<span class="brand">KEY<em>MAP</em></span><span class="tagline">Geospatial Intelligence Platform</span>',
-      loadKmz:'Load KMZ file',
+      loadKmz:'Load KMZ / Shapefile',
       resetAll:'Reset all',
       exportKmz:'Export KMZ',
       statTotal:'Total:',
@@ -2054,7 +2060,7 @@
       advSelectTip:'Bulk-select by field values or by pasting a list',
       viewMap:'Map',
       viewTable:'Table',
-      emptyState:'<b>Load a KMZ file</b> containing land use plots in the usual RCU format (plot name + an HTML field table inside the description). Plots are drawn on an interactive map in their original colours — click any plot to edit or delete it, or switch to the table view above. On export the same layout and colours are rebuilt, with the geometry left untouched.',
+      emptyState:'<b>Load a KMZ or Shapefile</b> containing land use plots. KMZ files use the usual RCU format (plot name + an HTML field table inside the description). For Shapefiles: pick a .zip containing .shp/.dbf/.prj together, or select the .shp and .dbf (and .prj if you have it) together from the same folder — geometry is reprojected to WGS84 automatically when a .prj is present, and DBF fields become the attribute table. Plots are drawn on an interactive map in their original colours — click any plot to edit or delete it, or switch to the table view above. On export the same layout and colours are rebuilt as a KMZ file, with the geometry left untouched.',
       toolPan:'Pan', toolPanTip:'Drag to pan the map',
       toolRect:'Rectangle', toolRectTip:'Drag a rectangle to select everything inside it',
       toolLasso:'Lasso', toolLassoTip:'Draw a freehand shape around the plots you want',
@@ -2101,6 +2107,11 @@
       noKml:'No .kml file found inside the KMZ',
       badXml:'Could not read the file — invalid XML',
       openError:'Error opening the file: {msg}',
+      shpLibMissing:'The Shapefile reader library failed to load — check your internet connection and try again',
+      shpNoGeom:'No valid polygon geometry found in {file}',
+      shpMissingDbf:'{file} needs a matching .dbf file — select it together with the .shp',
+      shpSkippedGeom:'Skipped {n} feature(s) from {file} — not a polygon (points/lines are not supported yet)',
+      shpNoProj:'No .prj file found for {file} — assuming the coordinates are already WGS84 (lon/lat)',
       exported:'Exported — check your downloads',
       exportError:'Error while exporting: {msg}',
       markedDeleted:'Marked for deletion: {name}',
@@ -2555,6 +2566,117 @@ ${inner}</table>
     return doc;
   }
 
+  // ---------- Load Shapefiles (.zip, or a loose .shp + .dbf + .prj group) ----------
+  // Converts parsed GeoJSON polygons into a synthetic KML document so the rest of the
+  // app (merge, styling, editing, export) treats a shapefile exactly like a KMZ source.
+  function ringToKmlCoords(ring){
+    return ring.map(pt=> pt[0] + ',' + pt[1]).join(' ');
+  }
+
+  function geoJsonPolygonToKmlXml(geom){
+    // geom.coordinates: Polygon -> [ring,...] ; MultiPolygon -> [[ring,...],...]
+    const polys = geom.type === 'MultiPolygon' ? geom.coordinates : [geom.coordinates];
+    const polyXml = polys.map(rings=>{
+      const outer = rings[0] || [];
+      const holes = rings.slice(1);
+      return `<Polygon><outerBoundaryIs><LinearRing><coordinates>${ringToKmlCoords(outer)}</coordinates></LinearRing></outerBoundaryIs>` +
+        holes.map(h=> `<innerBoundaryIs><LinearRing><coordinates>${ringToKmlCoords(h)}</coordinates></LinearRing></innerBoundaryIs>`).join('') +
+        `</Polygon>`;
+    }).join('');
+    return polys.length > 1 ? `<MultiGeometry>${polyXml}</MultiGeometry>` : polyXml;
+  }
+
+  function guessFeatureName(props, idx){
+    const keys = Object.keys(props || {});
+    const nameKey = keys.find(k=> /^(name|plot|plot_?name|parcel|id)$/i.test(k)) ||
+                    keys.find(k=> /name|plot|parcel/i.test(k));
+    const v = nameKey ? props[nameKey] : null;
+    return (v !== null && v !== undefined && String(v).trim()) ? String(v).trim() : null;
+  }
+
+  // Builds a standalone KML Document (same shape readKmlFromKmz returns) from GeoJSON features.
+  function geoJsonFeaturesToKmlDoc(features, layerName){
+    let skipped = 0;
+    const placemarksXml = features.map((f, i)=>{
+      const geom = f && f.geometry;
+      if(!geom || (geom.type !== 'Polygon' && geom.type !== 'MultiPolygon')){ skipped++; return ''; }
+      const props = f.properties || {};
+      const rows = Object.keys(props).map(k=> ({key: k, val: props[k] === null || props[k] === undefined ? '' : String(props[k])}));
+      const name = guessFeatureName(props, i) || (layerName + ' ' + (i + 1));
+      const desc = buildDescriptionHtml('', rows);
+      return `<Placemark><name>${escapeHtml(name)}</name><description><![CDATA[${desc}]]></description>${geoJsonPolygonToKmlXml(geom)}</Placemark>`;
+    }).filter(Boolean).join('\n');
+
+    const kmlText = `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${escapeHtml(layerName)}</name>${placemarksXml}</Document></kml>`;
+    const doc = new DOMParser().parseFromString(kmlText, 'text/xml');
+    if(doc.querySelector('parsererror')) throw new Error(t('badXml'));
+    return {doc, skipped};
+  }
+
+  // shp() returns one FeatureCollection, or an array of them for a multi-layer zip.
+  function flattenShpResult(result){
+    const collections = Array.isArray(result) ? result : [result];
+    let features = [];
+    collections.forEach(fc=>{ if(fc && fc.features) features = features.concat(fc.features); });
+    return features;
+  }
+
+  async function readKmlFromShpZip(file){
+    if(typeof shp !== 'function') throw new Error(t('shpLibMissing'));
+    const buf = await file.arrayBuffer();
+    const result = await shp(buf);
+    const features = flattenShpResult(result);
+    if(!features.length) throw new Error(t('shpNoGeom', {file: file.name}));
+    const layerName = file.name.replace(/\.(zip|shp)$/i, '');
+    const {doc, skipped} = geoJsonFeaturesToKmlDoc(features, layerName);
+    if(!doc.getElementsByTagName('Placemark').length) throw new Error(t('shpNoGeom', {file: file.name}));
+    if(skipped) showToast(t('shpSkippedGeom', {n: skipped, file: file.name}));
+    return doc;
+  }
+
+  // group: { shp: File, dbf: File|null, prj: File|null, cpg: File|null }
+  async function readKmlFromShpGroup(group){
+    if(typeof shp !== 'function') throw new Error(t('shpLibMissing'));
+    if(!group.dbf) throw new Error(t('shpMissingDbf', {file: group.shp.name}));
+    const [shpBuf, dbfBuf, prjText, cpgText] = await Promise.all([
+      group.shp.arrayBuffer(),
+      group.dbf.arrayBuffer(),
+      group.prj ? group.prj.text() : Promise.resolve(null),
+      group.cpg ? group.cpg.text() : Promise.resolve(null)
+    ]);
+    if(!prjText) showToast(t('shpNoProj', {file: group.shp.name}));
+    const geometries = shp.parseShp(shpBuf, prjText || undefined);
+    const properties = shp.parseDbf(dbfBuf, cpgText || undefined);
+    const fc = shp.combine([geometries, properties]);
+    const features = flattenShpResult(fc);
+    if(!features.length) throw new Error(t('shpNoGeom', {file: group.shp.name}));
+    const layerName = group.shp.name.replace(/\.shp$/i, '');
+    const {doc, skipped} = geoJsonFeaturesToKmlDoc(features, layerName);
+    if(!doc.getElementsByTagName('Placemark').length) throw new Error(t('shpNoGeom', {file: group.shp.name}));
+    if(skipped) showToast(t('shpSkippedGeom', {n: skipped, file: group.shp.name}));
+    return doc;
+  }
+
+  // Splits a raw FileList into KMZ files, standalone shapefile zips, and
+  // .shp+.dbf+.prj+.shx+.cpg groups (matched by shared basename).
+  function groupIncomingFiles(files){
+    const kmz = [], shpZips = [], groups = {};
+    files.forEach(file=>{
+      const ext = (file.name.match(/\.([a-z0-9]+)$/i) || [,''])[1].toLowerCase();
+      if(ext === 'kmz'){ kmz.push(file); return; }
+      if(ext === 'zip'){ shpZips.push(file); return; }
+      if(['shp','dbf','prj','shx','cpg'].includes(ext)){
+        const base = file.name.slice(0, file.name.length - ext.length - 1).toLowerCase();
+        (groups[base] = groups[base] || {}).base = base;
+        groups[base][ext] = file;
+        return;
+      }
+    });
+    const shpGroups = Object.values(groups).filter(g=> g.shp);
+    return {kmz, shpZips, shpGroups};
+  }
+
   // Two files can easily share style ids ("s1", "poly0"...). Namespace the
   // incoming document's ids so merged plots keep their own colours.
   function prefixStyleIds(doc, prefix){
@@ -2633,11 +2755,17 @@ ${inner}</table>
   fileInput.addEventListener('change', async (e)=>{
     const files = Array.from(e.target.files || []);
     if(!files.length) return;
+    const {kmz, shpZips, shpGroups} = groupIncomingFiles(files);
+    const items = [
+      ...kmz.map(file=> ({name: file.name, read: ()=> readKmlFromKmz(file)})),
+      ...shpZips.map(file=> ({name: file.name, read: ()=> readKmlFromShpZip(file)})),
+      ...shpGroups.map(g=> ({name: g.shp.name, read: ()=> readKmlFromShpGroup(g)}))
+    ];
     let addedTotal = 0, addedFiles = 0;
-    for(const file of files){
+    for(const item of items){
       try{
-        const doc = await readKmlFromKmz(file);
-        const source = {id: sources.length, name: file.name.replace(/\.kmz$/i,'')};
+        const doc = await item.read();
+        const source = {id: sources.length, name: item.name.replace(/\.(kmz|zip|shp)$/i,'')};
         let nodes;
         if(!xmlDoc){
           xmlDoc = doc;                       // first file becomes the master document
@@ -2658,7 +2786,7 @@ ${inner}</table>
         addedFiles++;
       }catch(err){
         console.error(err);
-        showToast(t('fileError', {file: file.name, msg: err.message}));
+        showToast(t('fileError', {file: item.name, msg: err.message}));
       }
     }
     fileInput.value = '';                     // allow re-picking the same file later
