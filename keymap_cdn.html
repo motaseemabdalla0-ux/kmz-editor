@@ -1961,7 +1961,7 @@
       opAddPlot:'إضافة قطعة',
       editBoundary:'تعديل الحدود',
       geomHudTitle:'تعديل حدود القطعة',
-      geomHudHint:'اسحب أي نقطة لتحريكها — انقر على النقطة الصغيرة في منتصف الضلع لإضافة نقطة — انقر مرتين (أو زر يمين) على نقطة لحذفها',
+      geomHudHint:'اسحب أي نقطة ذهبية لتحريكها — انقر في أي مكان على الخريطة لإضافة نقطة جديدة هناك (حتى خارج الحدود الحالية لتوسيع المساحة) — انقر مرتين (أو زر يمين) على نقطة لحذفها',
       geomSave:'حفظ الحدود',
       geomCancel:'إلغاء',
       noGeomToEdit:'لا توجد هندسة لتعديلها في هذه القطعة',
@@ -2295,7 +2295,7 @@
       opAddPlot:'add plot',
       editBoundary:'Edit boundary',
       geomHudTitle:'Editing plot boundary',
-      geomHudHint:'Drag any point to move it — click the small midpoint dot to add a point — double-click (or right-click) a point to delete it',
+      geomHudHint:'Drag any gold point to move it — click anywhere on the map to add a new point there (even outside the current boundary, to expand the area) — double-click (or right-click) a point to delete it',
       geomSave:'Save boundary',
       geomCancel:'Cancel',
       noGeomToEdit:'This plot has no geometry to edit',
@@ -3120,6 +3120,11 @@ ${inner}</table>
           newPlotClick(ev.latlng);
           return;
         }
+        if(geomEdit){
+          if(oe) L.DomEvent.stop(oe);
+          addVertexAtNearestEdge(ev.latlng);
+          return;
+        }
         if(selectMode || (oe && (oe.ctrlKey || oe.metaKey))){
           if(oe) L.DomEvent.stop(oe);
           leafletMap.closePopup();  // showQuickPopup opens a map-level popup now, not a layer-bound one
@@ -3374,6 +3379,7 @@ ${inner}</table>
     map.on('click', (e)=>{
       if(mapTool === 'measure'){ L.DomEvent.stop(e.originalEvent); measureClick(e.latlng); }
       else if(mapTool === 'newplot'){ L.DomEvent.stop(e.originalEvent); newPlotClick(e.latlng); }
+      else if(geomEdit){ L.DomEvent.stop(e.originalEvent); addVertexAtNearestEdge(e.latlng); }
     });
     map.on('mousedown', begin);
     map.on('mousemove', move);
@@ -4455,6 +4461,41 @@ ${inner}</table>
     return parts.reduce((n, part)=> n + part.reduce((m, ring)=> m + ring.length, 0), 0);
   }
 
+  // squared perpendicular distance from point p to segment a-b (plain lat/lng space —
+  // only used to pick the nearest edge, not for any real-world measurement)
+  function distToSegmentSq(p, a, b){
+    const dx = b[1] - a[1], dy = b[0] - a[0];
+    const lenSq = dx * dx + dy * dy;
+    let t = lenSq ? (((p[1] - a[1]) * dx + (p[0] - a[0]) * dy) / lenSq) : 0;
+    t = Math.max(0, Math.min(1, t));
+    const cx = a[1] + t * dx, cy = a[0] + t * dy;
+    return (p[1] - cx) ** 2 + (p[0] - cy) ** 2;
+  }
+
+  // Click-anywhere-to-expand: inserts a new vertex right after the nearest edge to the
+  // clicked point, across every ring in every part — so the new point can sit outside
+  // the current boundary and immediately grow the plot, not just densify an existing edge.
+  function addVertexAtNearestEdge(latlng){
+    if(!geomEdit) return;
+    const p = [latlng.lat, latlng.lng];
+    let best = null;
+    geomEdit.workParts.forEach((part, pi)=>{
+      part.forEach((ring, ri)=>{
+        if(ring.length < 3) return;
+        for(let vi = 0; vi < ring.length; vi++){
+          const a = ring[vi], b = ring[(vi + 1) % ring.length];
+          const d = distToSegmentSq(p, a, b);
+          if(!best || d < best.d) best = {pi, ri, vi, d};
+        }
+      });
+    });
+    if(!best) return;
+    pushGeomSnapshot();
+    geomEdit.workParts[best.pi][best.ri].splice(best.vi + 1, 0, p);
+    redrawEditLayer();
+    rebuildVertexMarkers();
+  }
+
   function startGeometryEdit(pm){
     if(!pm.rings || !pm.rings.length){ showToast(t('noGeomToEdit')); return; }
     if(geomEdit) cancelGeometryEdit();
@@ -4501,6 +4542,9 @@ ${inner}</table>
         if(ring.length < 3) return;
         ring.forEach((pt, vi)=>{
           const m = L.marker(pt, {icon: vertexIcon(), draggable:true}).addTo(vertexLayer);
+          // a plain click (not a drag) must not fall through to the map's own click
+          // handler, or it would insert a redundant new vertex right next to this one.
+          m.on('click', ev=> L.DomEvent.stop(ev));
           m.on('dragstart', ()=> pushGeomSnapshot());
           m.on('drag', ()=>{
             const ll = m.getLatLng();
