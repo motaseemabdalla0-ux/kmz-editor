@@ -4248,12 +4248,15 @@ ${inner}</table>
     if(!placemarks.length){ showToast(t('loadFileFirst')); return; }
     closePanel(); closeSelPanel();
     fillToolboxFields();
+    fillJoinSelects();
+    renderBookmarks();
     tbDupField.style.display = tbDupMode.value === 'field' ? 'block' : 'none';
     tbCalcB.style.display = tbCalcOp.value === 'replace' ? 'block' : 'none';
     updateCalcHint();
     computeStats();
     toolboxPanel.classList.add('open');
     overlay.classList.add('open');
+    paintIcons();
   }
   function closeToolbox(){
     toolboxPanel.classList.remove('open');
@@ -6398,18 +6401,6 @@ ${inner}</table>
       setView('map'); setTimeout(()=> leafletMap.setView([b.lat, b.lng], b.zoom), 60); return; }
     const del = e.target.closest('button[data-bmdel]');
     if(del){ bookmarks.splice(Number(del.dataset.bmdel), 1); saveBookmarks(); renderBookmarks(); }
-  });
-
-  // Keep the geo panels in step whenever the toolbox opens. NOTE: toolboxBtn's
-  // original 'click' -> openToolbox listener was already bound by the base
-  // script with a direct reference to that function *value* — reassigning the
-  // `openToolbox` variable afterward (as tried earlier) does nothing, since
-  // addEventListener doesn't re-read the variable at call time. An independent
-  // listener sidesteps that entirely.
-  toolboxBtn.addEventListener('click', ()=>{
-    fillJoinSelects();
-    renderBookmarks();
-    paintIcons();
   });
 
 
