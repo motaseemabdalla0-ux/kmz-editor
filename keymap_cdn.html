@@ -88,6 +88,7 @@
     flex-wrap:wrap;
     border-bottom:3px solid var(--gold);
     flex-shrink:0;
+    position:relative; z-index:900; /* own stacking context so header popovers clear Leaflet's panes (up to z-index 700) below */
   }
   header h1{
     font-size:16px;
