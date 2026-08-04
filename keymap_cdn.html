@@ -1842,6 +1842,9 @@
       mapHintSelect:'وضع التحديد مفعّل — اضغط على القطع لتحديدها، أو استخدم أدوات الرسم بالأعلى',
       legendHead:'اضغط على فئة لتحديد كل قطعها',
       legendTip:'اضغط لتحديد كل قطع هذه الفئة',
+      legendSoloTip:'إظهار هذه فقط وإخفاء البقية',
+      catIsolated:'إظهار «{name}» فقط — أُخفيت باقي الفئات',
+      fileIsolated:'إظهار «{name}» فقط — أُخفيت باقي الملفات',
       colName:'الاسم', colActions:'إجراءات',
       selectAllShown:'تحديد/إلغاء كل المعروض',
       edit:'تعديل', del:'حذف', restore:'استرجاع', select:'تحديد', deselect:'إلغاء التحديد',
@@ -2187,6 +2190,9 @@
       mapHintSelect:'Select mode is on — click plots to select them, or use the draw tools above',
       legendHead:'Click a category to select all its plots',
       legendTip:'Click to select every plot in this category',
+      legendSoloTip:'Show only this, hide the rest',
+      catIsolated:'Showing only "{name}" — the other categories are hidden',
+      fileIsolated:'Showing only "{name}" — the other files are hidden',
       colName:'Name', colActions:'Actions',
       selectAllShown:'Select / clear all shown',
       edit:'Edit', del:'Delete', restore:'Restore', select:'Select', deselect:'Deselect',
@@ -2630,6 +2636,23 @@
     return {hex, alpha: isNaN(alpha)?1:alpha};
   }
 
+  // A placemark's styleUrl often points at a <StyleMap> (a normal/highlight pair) rather
+  // than a <Style> directly — the normal case for anything authored in Google Earth.
+  // Resolves to the "normal" pair's target style id (falling back to the first pair),
+  // or returns the id unchanged if it isn't a StyleMap at all.
+  function resolveStyleMapTarget(id){
+    const sm = Array.from(xmlDoc.getElementsByTagName('StyleMap')).find(s=> s.getAttribute('id') === id);
+    if(!sm) return id;
+    const pairs = Array.from(sm.getElementsByTagName('Pair'));
+    const normalPair = pairs.find(p=>{
+      const keyEl = p.getElementsByTagName('key')[0];
+      return keyEl && keyEl.textContent.trim() === 'normal';
+    }) || pairs[0];
+    const urlEl = normalPair ? normalPair.getElementsByTagName('styleUrl')[0] : null;
+    if(!urlEl) return id;
+    return urlEl.textContent.trim().replace(/^#/, '');
+  }
+
   function buildStyleColorMap(){
     styleColorMap = {};
     const styles = Array.from(xmlDoc.getElementsByTagName('Style'));
@@ -2644,6 +2667,15 @@
         fill: pc ? kmlColorToCss(pc.textContent.trim()) : DEFAULT_FILL,
         line: lc ? kmlColorToCss(lc.textContent.trim()) : DEFAULT_LINE
       };
+    });
+    // styleColorMap only indexes <Style> above, so every placemark whose styleUrl points
+    // at a <StyleMap> was silently falling back to the generic default colour — alias
+    // each map's id onto its already-computed target style's colours.
+    Array.from(xmlDoc.getElementsByTagName('StyleMap')).forEach(sm=>{
+      const id = sm.getAttribute('id');
+      if(!id) return;
+      const targetId = resolveStyleMapTarget(id);
+      if(styleColorMap[targetId]) styleColorMap[id] = styleColorMap[targetId];
     });
   }
 
@@ -3469,7 +3501,9 @@ ${inner}</table>
       return `<div class="lg-row${on ? '' : ' off'}" data-file="${s.id}">
         <input type="checkbox" ${on ? 'checked' : ''}>
         <span class="lg-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
-        <span class="lg-count">${live}</span></div>`;
+        <span class="lg-count">${live}</span>
+        <button class="lg-pick" data-solofile="${s.id}" title="${escapeHtml(t('legendSoloTip'))}">${svgIcon('eye')}</button>
+      </div>`;
     }).join('');
     mapFiles.innerHTML = `<div class="lg-head-row">
         <span class="lg-name">${escapeHtml(t('filesPanelHead'))}</span>
@@ -3496,6 +3530,18 @@ ${inner}</table>
       renderTable();
       markSession();
       showToast(on ? t('shownAllFiles') : t('hiddenAllFiles'));
+      return;
+    }
+    const solo = e.target.closest('button[data-solofile]');
+    if(solo){
+      const id = Number(solo.dataset.solofile);
+      sources.forEach(s=> setSourceVisible(s, s.id === id));
+      renderFilesPanel();
+      buildMapLegend();
+      renderTable();
+      markSession();
+      const src = sources.find(s=> s.id === id);
+      showToast(t('fileIsolated', {name: src ? src.name : ''}));
       return;
     }
     const row = e.target.closest('.lg-row[data-file]');
@@ -3536,6 +3582,7 @@ ${inner}</table>
         <input type="color" class="lg-swatch" data-group-color="${i}" value="${g.colour}" title="${escapeHtml(t('changeColor'))}">
         <span class="lg-name" title="${escapeHtml(g.label)}">${escapeHtml(g.label)}</span>
         <span class="lg-count">${g.count}</span>
+        <button class="lg-pick" data-solo="${i}" title="${escapeHtml(t('legendSoloTip'))}">${svgIcon('eye')}</button>
         <button class="lg-pick" data-pick="${i}" title="${escapeHtml(t('legendTip'))}">${svgIcon('checkSquare')}</button>
       </div>`;
     });
@@ -3566,6 +3613,18 @@ ${inner}</table>
       buildMapLegend();
       renderTable();
       showToast(on ? t('shownAllCats') : t('hiddenAllCats'));
+      return;
+    }
+    // isolate: show only this category, hide every other one
+    const solo = e.target.closest('button[data-solo]');
+    if(solo){
+      const group = legendGroups[Number(solo.dataset.solo)];
+      if(!group) return;
+      legendGroups.forEach(g=> setCategoryVisible(g, g === group));
+      buildMapLegend();
+      renderTable();
+      markSession();
+      showToast(t('catIsolated', {name: group.label}));
       return;
     }
     // the ☑ button still selects every plot in the category
@@ -3611,12 +3670,18 @@ ${inner}</table>
   // Finds the <Style id="..."> element backing a style id, creating a minimal
   // PolyStyle/LineStyle/color skeleton if the id has no style element yet.
   function getOrCreateStyleElement(styleId){
+    // if styleId actually names a <StyleMap>, edit the style it resolves to instead --
+    // otherwise this would create a second, colliding element with the same id as the
+    // map (a real bug caught in testing: buildStyleColorMap() indexes StyleMap entries
+    // *after* Style entries, so it would immediately overwrite the just-set colour with
+    // the map's original resolved colour).
+    const realId = resolveStyleMapTarget(styleId);
     const ns = xmlDoc.documentElement.namespaceURI;
     const el = tag => ns ? xmlDoc.createElementNS(ns, tag) : xmlDoc.createElement(tag);
-    let styleEl = Array.from(xmlDoc.getElementsByTagName('Style')).find(s=> s.getAttribute('id') === styleId);
+    let styleEl = Array.from(xmlDoc.getElementsByTagName('Style')).find(s=> s.getAttribute('id') === realId);
     if(!styleEl){
       styleEl = el('Style');
-      styleEl.setAttribute('id', styleId);
+      styleEl.setAttribute('id', realId);
       docContainer(xmlDoc).appendChild(styleEl);
     }
     let poly = styleEl.getElementsByTagName('PolyStyle')[0];
@@ -3799,8 +3864,10 @@ ${inner}</table>
   function refreshPlacemarkVisual(pm){
     const layer = mapLayers[pm.idx];
     if(!layer) return;
-    // plots from a hidden file or category leave the map entirely rather than just fading
-    if(!plotVisible(pm)){
+    // plots from a hidden file/category, or marked for deletion, leave the map
+    // entirely rather than just fading or turning red — deleting a plot should
+    // actually make it disappear; it stays recoverable via the table's Restore.
+    if(!plotVisible(pm) || pm.deleted){
       if(mapLayerGroup && mapLayerGroup.hasLayer(layer)) mapLayerGroup.removeLayer(layer);
       return;
     }
@@ -3814,16 +3881,13 @@ ${inner}</table>
       // selection always wins visually so the group being acted on is unmistakable
       layer.setStyle({
         color:'#7A5F2A', weight: outline ? 4 : 3, opacity:1,
-        fillColor: pm.deleted ? '#B84A3E' : '#BA9863',
-        fillOpacity: outline ? (pm.deleted ? .18 : .3) : (pm.deleted ? .25 : .6),
-        dashArray: pm.deleted ? '5,5' : null
+        fillColor: '#BA9863',
+        fillOpacity: outline ? .3 : .6,
+        dashArray: null
       });
       return;
     }
-    if(pm.deleted){
-      layer.setStyle({color:'#B84A3E', weight:2, opacity:.9, fillColor:'#B84A3E',
-                      fillOpacity: outline ? faint : .12, dashArray:'5,5'});
-    } else if(outline){
+    if(outline){
       // stroke in the category's own fill colour — the KML line colour is usually near-black
       layer.setStyle({
         color: style.fill.hex,
@@ -5121,6 +5185,7 @@ ${inner}</table>
     close:'<path d="M6 6l12 12M18 6 6 18"/>',
     trash:'<path d="M4 7h16M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2"/><path d="M6.5 7 7.4 20a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9L17.5 7"/>',
     target:'<circle cx="12" cy="12" r="7.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>',
+    eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     invert:'<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/>',
     zoomIn:'<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5M11 8.5v5M8.5 11h5"/>',
     restore:'<path d="M4 5v5h5"/><path d="M4.6 14a8 8 0 1 0 1.2-6"/>',
