@@ -166,6 +166,21 @@
   .src-name{flex:1; font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .src-count{font-family:var(--mono); font-size:11px; color:#8a8378; white-space:nowrap;}
   .src-row .icon-btn{width:24px; height:24px; font-size:11px;}
+  .src-name-input{
+    flex:1; min-width:0; font-size:12px; font-weight:600;
+    background:var(--surface-3); border:1px solid var(--gold); border-radius:5px;
+    padding:3px 6px; color:var(--text); font-family:var(--sans);
+  }
+  .src-name-input:focus{outline:none; box-shadow:0 0 0 2px var(--gold-dim);}
+  /* clearer, always-on icon colours instead of only lighting up on hover */
+  .src-row .act-rename{color:var(--text-2);}
+  .src-row .act-rename:hover{color:var(--gold); border-color:var(--gold);}
+  .src-row .act-select{color:#4FBF8B; border-color:rgba(79,191,139,.35);}
+  .src-row .act-select:hover{color:#6BD9A5; border-color:#6BD9A5; background:rgba(79,191,139,.12);}
+  .src-row .act-zoom{color:#5AC8FA; border-color:rgba(90,200,250,.35);}
+  .src-row .act-zoom:hover{color:#8AD9FF; border-color:#8AD9FF; background:rgba(90,200,250,.12);}
+  .src-row .icon-btn.danger{color:var(--danger); border-color:rgba(224,101,91,.35);}
+  .src-row .icon-btn.danger:hover{color:#fff; background:var(--danger); border-color:var(--danger);}
 
   /* ---------- Status / toolbar ---------- */
   .toolbar{
@@ -1920,6 +1935,7 @@
       filesBtn:'الملفات ({n})',
       filesHead:'الملفات المدمجة',
       filesNote:'يمكنك تحميل عدة ملفات KMZ وستُدمج في مستند واحد عند التصدير. كل ملف يوضع في مجلد باسمه.',
+      srcRename:'إعادة تسمية الملف',
       srcSelect:'تحديد كل قطع هذا الملف',
       srcZoom:'تكبير على هذا الملف',
       srcRemove:'إزالة هذا الملف',
@@ -2266,6 +2282,7 @@
       filesBtn:'Files ({n})',
       filesHead:'Merged files',
       filesNote:'You can load several KMZ files; they are merged into one document on export. Each file goes into a folder named after it.',
+      srcRename:'Rename this file',
       srcSelect:'Select every plot from this file',
       srcZoom:'Zoom to this file',
       srcRemove:'Remove this file',
@@ -3038,8 +3055,9 @@ ${inner}</table>
       return `<div class="src-row" data-src="${s.id}">
         <span class="src-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
         <span class="src-count">${live.length}${del ? ' − ' + del : ''}</span>
-        <button class="icon-btn" data-sact="select" title="${escapeHtml(t('srcSelect'))}">${svgIcon('checkSquare')}</button>
-        <button class="icon-btn" data-sact="zoom" title="${escapeHtml(t('srcZoom'))}">${svgIcon('target')}</button>
+        <button class="icon-btn act-rename" data-sact="rename" title="${escapeHtml(t('srcRename'))}">${svgIcon('edit')}</button>
+        <button class="icon-btn act-select" data-sact="select" title="${escapeHtml(t('srcSelect'))}">${svgIcon('checkSquare')}</button>
+        <button class="icon-btn act-zoom" data-sact="zoom" title="${escapeHtml(t('srcZoom'))}">${svgIcon('target')}</button>
         <button class="icon-btn danger" data-sact="remove" title="${escapeHtml(t('srcRemove'))}">${svgIcon('trash')}</button>
       </div>`;
     }).join('');
@@ -3063,6 +3081,39 @@ ${inner}</table>
     const mine = placemarks.filter(p=>p.sourceId === sourceId);
     if(!source) return;
 
+    if(btn.dataset.sact === 'rename'){
+      const row = btn.closest('.src-row');
+      const nameEl = row.querySelector('.src-name');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'src-name-input';
+      input.value = source.name;
+      nameEl.replaceWith(input);
+      input.focus();
+      input.select();
+      let done = false;
+      const commit = ()=>{
+        if(done) return;
+        done = true;
+        const newName = input.value.trim();
+        if(newName && newName !== source.name){
+          source.name = newName;
+          // keep the exported KML's own <Folder><name> in step, if this source has one
+          if(source.folder){
+            const nameNode = source.folder.getElementsByTagName('name')[0];
+            if(nameNode) nameNode.textContent = newName;
+          }
+          markSession();
+        }
+        renderSourceList();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', (ev)=>{
+        if(ev.key === 'Enter'){ ev.preventDefault(); commit(); }
+        else if(ev.key === 'Escape'){ ev.preventDefault(); done = true; renderSourceList(); }
+      });
+      return;
+    }
     if(btn.dataset.sact === 'select'){
       const allSel = mine.length && mine.every(p=>selected.has(p.idx));
       mine.forEach(p=> setSelected(p, !allSel));
